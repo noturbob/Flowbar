@@ -142,7 +142,9 @@ public class Flowbar : Gtk.Application {
         panels = new Stack ();
         panels.transition_type = StackTransitionType.CROSSFADE;
         panels.transition_duration = (uint) Config.ms (220);
-        panels.interpolate_size = true;
+        // No size tweening between panels: GtkStack squeezes the incoming panel below its
+        // minimum while it interpolates, and GTK warns about it. The crossfade covers the jump.
+        panels.interpolate_size = false;
         panels.hhomogeneous = panels.vhomogeneous = false;
         foreach (var m in modules) panels.add_named (m.panel, m.key);
 
