@@ -137,6 +137,7 @@ public class Flowbar : Gtk.Application {
         case "system": return new Sys ();
         case "power": return new Power ();
         }
+        if (("custom." + name) in Config.groups ()) return new Custom (name);
         warning ("config.ini: unknown module '%s'", name);
         return null;
     }
