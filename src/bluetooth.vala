@@ -2,6 +2,7 @@ using Gtk;
 
 class Bluetooth : Module {
     Label status = label ("", "status");
+    Label power;
     Picker list = new Picker ();
     string[] macs = {};
     string[] linked = {};
@@ -11,13 +12,17 @@ class Bluetooth : Module {
         base ("b", "");
         every = 5;
         panel.width_request = 300;
+        power = key_row ("space", "", this);
         panel.append (status);
+        panel.append (power);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (label ("j/k move · enter (dis)connect · space power", "dim"));
     }
 
     public override async void refresh () {
         powered = "Powered: yes" in (yield sh ("bluetoothctl show"));
+        power.label = keyed ("space", "Bluetooth   " + onoff (powered));
         if (!powered) {
             value.label = "off";
             status.label = "Bluetooth off";

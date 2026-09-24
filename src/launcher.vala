@@ -19,6 +19,7 @@ class Launcher : Module {
         panel.width_request = 480;
         panel.append (query_label);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (empty);
         panel.append (label ("type to search · ↑/↓ pick · enter launch · esc close", "dim"));
     }

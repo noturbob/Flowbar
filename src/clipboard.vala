@@ -19,6 +19,7 @@ class Clip : Module {
         panel.width_request = 420;
         panel.append (empty);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (label ("j/k pick · enter copy · x delete · X clear all", "dim"));
         current = this;
         if (!watching) {

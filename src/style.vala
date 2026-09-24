@@ -43,7 +43,9 @@ window { background: transparent; }
     transition: opacity 120ms ease-in, transform 120ms ease-in, background-color 0ms;
 }
 
+.chip:hover { background: alpha(var(--accent), 0.1); }
 .chip.active { background: alpha(var(--accent), 0.18); }
+.row.key-row:hover { background: alpha(var(--accent), 0.12); }
 .chip .key {
     font-size: 10px;
     font-weight: bold;

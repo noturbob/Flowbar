@@ -15,7 +15,9 @@ class Media : Module {
         panel.append (artist);
         panel.append (album);
         panel.append (state);
-        panel.append (label ("space play/pause · h/l prev/next", "dim"));
+        panel.append (key_row ("space", "play / pause", this));
+        panel.append (key_row ("h", "previous", this));
+        panel.append (key_row ("l", "next", this));
     }
 
     public override async void refresh () {

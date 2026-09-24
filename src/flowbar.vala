@@ -14,6 +14,7 @@ delegate void Step (double eased);
 
 public class Flowbar : Gtk.Application {
     Window win;
+    Window? catcher = null; // full-screen and invisible behind the bar: a click on it closes the bar
     Peek peek;
     Module[] loose = {}; // modules made just for peeks, when they aren't on the bar
     Box root;
@@ -161,6 +162,16 @@ public class Flowbar : Gtk.Application {
         root.append (drawer);
         win.child = root;
 
+        // Clicks that land on nothing (the clear space around the bar and panel) close it.
+        if (mouse ()) {
+            var outside = new GestureClick ();
+            outside.released.connect ((n, x, y) => {
+                var hit = root.pick (x, y, PickFlags.DEFAULT);
+                if (hit == root || hit == drawer) hide_bar ();
+            });
+            root.add_controller (outside);
+        }
+
         load_css ();
     }
 
@@ -180,8 +191,26 @@ public class Flowbar : Gtk.Application {
             }
             modules += m;
             box.append (m.chip);
+            if (mouse ()) clickable (m);
         }
         return box;
+    }
+
+    static bool mouse () {
+        return Config.flag ("bar", "mouse", true);
+    }
+
+    // Click a chip to open or close its panel; scroll on it for modules that take it.
+    void clickable (Module m) {
+        m.chip.cursor = new Gdk.Cursor.from_name ("pointer", null);
+        var click = new GestureClick ();
+        click.released.connect (() => {
+            if (active == m) close_panel (); else open_panel (m);
+        });
+        m.chip.add_controller (click);
+        var scroll = new EventControllerScroll (EventControllerScrollFlags.VERTICAL | EventControllerScrollFlags.DISCRETE);
+        scroll.scroll.connect ((dx, dy) => m.on_scroll (dy));
+        m.chip.add_controller (scroll);
     }
 
     static Module? make_module (string name) {
@@ -300,9 +329,32 @@ public class Flowbar : Gtk.Application {
         }
         shown = true;
         refresh (true);
+        if (mouse ()) catch_clicks ().present (); // under the bar, so it goes first
         win.present ();
         reveal ();
         tick ();
+    }
+
+    // A clear layer over the whole screen, just below the bar, while the bar is open: clicking
+    // anywhere outside the bar or its panel lands here and closes it, like any popover.
+    Window catch_clicks () {
+        if (catcher != null) return catcher;
+        catcher = new Window ();
+        catcher.application = this;
+        GtkLayerShell.init_for_window (catcher);
+        GtkLayerShell.set_namespace (catcher, "flowbar-backdrop");
+        GtkLayerShell.set_layer (catcher, GtkLayerShell.Layer.TOP);
+        foreach (var edge in new GtkLayerShell.Edge[] { TOP, BOTTOM, LEFT, RIGHT }) {
+            GtkLayerShell.set_anchor (catcher, edge, true);
+        }
+        GtkLayerShell.set_exclusive_zone (catcher, -1); // the whole screen, reserved strips included
+        GtkLayerShell.set_keyboard_mode (catcher, GtkLayerShell.KeyboardMode.NONE);
+        var backdrop = new Box (Orientation.VERTICAL, 0);
+        var click = new GestureClick ();
+        click.released.connect (() => hide_bar ());
+        backdrop.add_controller (click);
+        catcher.child = backdrop;
+        return catcher;
     }
 
     // Drop .hidden only once the hidden style has been painted, so the CSS transitions run.
@@ -325,6 +377,7 @@ public class Flowbar : Gtk.Application {
 
     public void hide_bar () {
         shown = false;
+        if (catcher != null) catcher.visible = false;
         close_panel ();
         root.add_css_class ("hidden");
         reserve (false);
@@ -514,6 +567,11 @@ public abstract class Module {
     // Typed characters, for modules with typing = true.
     public virtual void on_text (unichar c) {}
 
+    // Scrolling on the chip: dy is +1 per step down, -1 per step up. Return true if used.
+    public virtual bool on_scroll (double dy) {
+        return false;
+    }
+
     // 0-100 for modules that have a level (volume, brightness), shown by --peek; -1 if not.
     public virtual double level () {
         return -1;
@@ -538,6 +596,7 @@ class Picker : Box {
     public int pos = 0;
     public int count = 0;
     public bool moved = false; // the user has moved the cursor since the panel last reset it
+    public signal void activated (); // a row was clicked; pos is that row
 
     public Picker () {
         Object (orientation: Orientation.VERTICAL, spacing: 2);
@@ -546,11 +605,12 @@ class Picker : Box {
     public void set_rows (string[] markup) {
         Widget? c;
         while ((c = get_first_child ()) != null) remove (c);
-        foreach (var m in markup) {
+        for (int i = 0; i < markup.length; i++) {
             var l = label ("", "row");
             l.use_markup = true;
-            l.label = m;
+            l.label = markup[i];
             append (l);
+            if (Config.flag ("bar", "mouse", true)) pointable (l, i);
         }
         count = markup.length;
         pos = pos.clamp (0, int.max (count - 1, 0));
@@ -566,6 +626,26 @@ class Picker : Box {
         return true;
     }
 
+    // Hovering a row moves the cursor to it, clicking it acts on it.
+    void pointable (Label row, int i) {
+        row.cursor = new Gdk.Cursor.from_name ("pointer", null);
+        var hover = new EventControllerMotion ();
+        hover.enter.connect (() => {
+            pos = i;
+            moved = true;
+            paint ();
+        });
+        row.add_controller (hover);
+        var click = new GestureClick ();
+        click.released.connect (() => {
+            pos = i;
+            moved = true;
+            paint ();
+            activated ();
+        });
+        row.add_controller (click);
+    }
+
     void paint () {
         int i = 0;
         for (var c = get_first_child (); c != null; c = c.get_next_sibling ()) {
@@ -579,16 +659,44 @@ string clip (string s, int max) {
     return s.char_count () > max ? s.substring (0, s.index_of_nth_char (max - 1)) + "…" : s;
 }
 
-// "k   name" rows for panels that are a menu of single-key actions.
-Label key_row (string key, string text) {
+// "k   name" rows for panels that are a menu of single-key actions. With an owner, clicking
+// the row is the same as pressing its key.
+Label key_row (string key, string text, Module? owner = null) {
     var row = label ("", "row");
     row.use_markup = true;
     row.label = keyed (key, text);
+    if (owner != null && Config.flag ("bar", "mouse", true)) {
+        row.add_css_class ("key-row");
+        row.cursor = new Gdk.Cursor.from_name ("pointer", null);
+        var click = new GestureClick ();
+        click.released.connect (() => owner.on_key (key));
+        row.add_controller (click);
+    }
     return row;
 }
 
 string keyed (string key, string text) {
-    return "<b><span foreground='%s'>%s</span></b>   %s".printf (Theme.accent (), key, text);
+    var shown = key == "Return" ? "enter" : key;
+    return "<b><span foreground='%s'>%s</span></b>   %s".printf (Theme.accent (), shown, text);
+}
+
+// "on" in the theme's good color, or a dimmed "off", for toggle rows.
+string onoff (bool on) {
+    return on ? "<span foreground='%s'>on</span>".printf (Theme.color ("good")) : "<span alpha='45%'>off</span>";
+}
+
+delegate void SetLevel (int percent);
+
+// Click anywhere along a meter to jump to that level.
+void settable (LevelBar meter, owned SetLevel set) {
+    if (!Config.flag ("bar", "mouse", true)) return;
+    meter.cursor = new Gdk.Cursor.from_name ("pointer", null);
+    var click = new GestureClick ();
+    click.released.connect ((n, x, y) => {
+        int width = meter.get_width ();
+        if (width > 0) set (((int) (x / width * 100 + 0.5)).clamp (0, 100));
+    });
+    meter.add_controller (click);
 }
 
 async string sh (string cmd) {

@@ -18,7 +18,8 @@ class Updates : Module {
         pkgs.use_markup = true;
         panel.append (status);
         panel.append (pkgs);
-        panel.append (label ("enter update · r check now", "dim"));
+        panel.append (key_row ("Return", "upgrade", this));
+        panel.append (key_row ("r", "check now", this));
     }
 
     public override async void refresh () {

@@ -5,8 +5,8 @@ using Gtk;
 // nothing during the day. Low T / high T+1 keeps the screen warm around the clock.
 class Night : Module {
     const string MODE = "[mode=do-not-disturb]";
-    Label night_row = key_row ("n", "");
-    Label dnd_row = key_row ("f", "");
+    Label night_row;
+    Label dnd_row;
     Label note = label ("", "dim");
     bool night = false;
     bool dnd = false;
@@ -17,6 +17,8 @@ class Night : Module {
         panel.width_request = 300;
         note.wrap = true;
         note.max_width_chars = 40;
+        night_row = key_row ("n", "", this);
+        dnd_row = key_row ("f", "", this);
         panel.append (label ("Night & quiet", "status"));
         panel.append (night_row);
         panel.append (dnd_row);
@@ -26,8 +28,8 @@ class Night : Module {
     public override async void refresh () {
         night = (yield sh ("pgrep -x wlsunset")) != "";
         dnd = "do-not-disturb" in (yield sh ("makoctl mode"));
-        night_row.label = keyed ("n", "night light   " + state (night));
-        dnd_row.label = keyed ("f", "do not disturb   " + state (dnd));
+        night_row.label = keyed ("n", "night light   " + onoff (night));
+        dnd_row.label = keyed ("f", "do not disturb   " + onoff (dnd));
         value.label = night && dnd ? "night · dnd" : night ? "night" : dnd ? "dnd" : "off";
 
         // Say what's missing rather than toggling something that can't take effect.
@@ -41,10 +43,6 @@ class Night : Module {
         }
         note.label = string.joinv ("\n\n", missing);
         note.visible = missing.length > 0;
-    }
-
-    static string state (bool on) {
-        return on ? "<span foreground='%s'>on</span>".printf (Theme.color ("good")) : "<span alpha='45%'>off</span>";
     }
 
     public override bool on_key (string k) {

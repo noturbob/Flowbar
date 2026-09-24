@@ -2,6 +2,7 @@ using Gtk;
 
 class Wifi : Module {
     Label status = label ("", "status");
+    Label radio;
     Picker list = new Picker ();
     string[] ssids = {};
     string[] secure = {};
@@ -11,13 +12,18 @@ class Wifi : Module {
         base ("w", "");
         every = 5;
         panel.width_request = 340;
+        radio = key_row ("space", "", this);
         panel.append (status);
+        panel.append (radio);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (label ("j/k move · enter connect · space radio · r rescan", "dim"));
     }
 
     public override async void refresh () {
-        if ((yield sh ("nmcli radio wifi")) != "enabled") {
+        bool on = (yield sh ("nmcli radio wifi")) == "enabled";
+        radio.label = keyed ("space", "Wi‑Fi   " + onoff (on));
+        if (!on) {
             value.label = "off";
             status.label = "Wi-Fi off";
             ssids = secure = {};

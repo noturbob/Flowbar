@@ -14,6 +14,7 @@ class Notifications : Module {
         panel.width_request = 460;
         panel.append (status);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (label ("enter act (on screen) · x dismiss · X all · r bring back last · f do not disturb", "dim"));
     }
 

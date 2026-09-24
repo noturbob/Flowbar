@@ -9,6 +9,7 @@ class Brightness : Module {
         base ("d", "");
         every = 2;
         panel.width_request = 300;
+        settable (meter, (p) => act.begin (CTL + "set %d%%".printf (int.max (p, 1))));
         panel.append (big);
         panel.append (meter);
         panel.append (label ("h/l −/+%d%%".printf (step ()), "dim"));
@@ -23,6 +24,10 @@ class Brightness : Module {
         }
         value.label = big.label = f[3];
         meter.value = int.parse (f[3]).clamp (0, 100);
+    }
+
+    public override bool on_scroll (double dy) {
+        return on_key (dy > 0 ? "h" : "l");
     }
 
     public override double level () {

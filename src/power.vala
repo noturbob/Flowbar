@@ -23,7 +23,7 @@ class Power : Module {
         panel.width_request = 260;
         panel.append (status);
         for (int i = 0; i < KEYS.length; i++) {
-            var row = key_row (KEYS[i], NAMES[i]);
+            var row = key_row (KEYS[i], NAMES[i], this); // click twice, like pressing twice
             panel.append (row);
             rows += row;
         }

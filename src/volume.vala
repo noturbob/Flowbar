@@ -5,6 +5,7 @@ class Volume : Module {
     Label big = label ("", "big");
     LevelBar meter = new LevelBar.for_interval (0, 100);
     Label heading = label ("", "dim");
+    Label mute;
     Picker list = new Picker ();
     string[] names = {};
     bool input = false; // false: speakers/headphones, true: microphones
@@ -12,10 +13,14 @@ class Volume : Module {
     public Volume () {
         base ("v", "");
         panel.width_request = 340;
+        mute = key_row ("m", "", this);
+        settable (meter, (p) => act.begin ("wpctl set-volume %s %d%%".printf (target (), p)));
         panel.append (big);
         panel.append (meter);
+        panel.append (mute);
         panel.append (heading);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (label ("h/l −/+%d%% · m mute · j/k pick · enter use · i inputs/outputs".printf (step ()), "dim"));
     }
 
@@ -23,6 +28,10 @@ class Volume : Module {
     public override void opened () {
         input = false;
         list.moved = false;
+    }
+
+    public override bool on_scroll (double dy) {
+        return on_key (dy > 0 ? "h" : "l"); // scroll down is quieter
     }
 
     public override double level () {
@@ -43,6 +52,7 @@ class Volume : Module {
         var f = shown.split (" ");
         meter.value = f.length > 1 ? ((int) (double.parse (f[1]) * 100 + 0.5)).clamp (0, 100) : 0;
         if ("MUTED" in shown) meter.add_css_class ("muted"); else meter.remove_css_class ("muted");
+        mute.label = keyed ("m", "sound   " + onoff (!("MUTED" in shown)));
 
         // `pactl list` blocks start with "Name:" then "Description:". Sources include a
         // ".monitor" loopback of every output; those aren't microphones, so skip them.

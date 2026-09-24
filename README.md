@@ -28,6 +28,7 @@ Most bars rent a strip of your screen forever to show you the time. flowbar only
 - **One key, then one letter.** <kbd>Super</kbd>+<kbd>/</kbd> to summon, a letter for each panel, <kbd>Esc</kbd> to back out.
 - **Moves like niri.** Windows slide down to make room and slide back up when it leaves, eased like the bar itself.
 - **One file.** Theme, layout, keys, icons and commands all live in one `config.ini`, and saving it restyles the open bar on the spot.
+- **Mouse welcome.** Every chip, row and toggle is clickable too, and clicking outside closes it.
 - **Made to be riced.** Six themes, every color overridable, CSS variables for your own stylesheet, and any shell command can become a module.
 
 <br>
@@ -129,6 +130,10 @@ Summon with <kbd>Super</kbd>+<kbd>/</kbd>. Every chip on the bar shows its key: 
 | <kbd>s</kbd> | system | CPU, memory, temperature, battery |
 | <kbd>p</kbd> | power | <kbd>l</kbd> lock · <kbd>s</kbd> suspend · <kbd>e</kbd> log out · <kbd>r</kbd> reboot · <kbd>o</kbd> power off, each pressed **twice** |
 
+### With a mouse
+
+Everything also works by pointer. Click a chip to open its panel (click it again to close), click any row to act on it, and click a toggle (Wi‑Fi, Bluetooth, mute, night light, do not disturb, play/pause) to flip it. Click along the volume or brightness meter to jump to that level, or scroll on their chips. Scroll on the workspaces chip to move between workspaces. Clicking anywhere outside the bar closes it. Power actions still take two clicks. Set `[bar] mouse = false` for keyboard only.
+
 An open panel gets first pick of the keyboard, so letters can mean something local there (<kbd>s</kbd> is suspend inside power, not system). The launcher takes that furthest: while it's open, everything you type goes into the search.
 
 <br>
@@ -149,6 +154,7 @@ left   = workspaces time calendar media
 center = launcher clipboard screenshot notifications night updates
 right  = wifi bluetooth volume display system power
 margin = auto             # niri's layout `gaps`: the bar sits as far from the edges as your windows do
+mouse = true              # clicks and scrolling; false for keyboard only
 height = 24               # the size of a stock waybar
 
 [motion]

@@ -13,8 +13,8 @@ class Shot : Module {
         every = 3600;
         panel.width_request = 260;
         panel.append (label ("Screenshot", "status"));
-        for (int i = 0; i < KEYS.length; i++) panel.append (key_row (KEYS[i], NAMES[i]));
-        panel.append (key_row ("o", "open folder"));
+        for (int i = 0; i < KEYS.length; i++) panel.append (key_row (KEYS[i], NAMES[i], this));
+        panel.append (key_row ("o", "open folder", this));
         panel.append (label ("saved to %s and copied".printf (dir ()), "dim"));
     }
 

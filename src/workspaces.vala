@@ -15,6 +15,7 @@ class Workspaces : Module {
         panel.width_request = 480;
         panel.append (status);
         panel.append (list);
+        list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
         panel.append (label ("j/k pick · enter focus · 1–9 go to workspace", "dim"));
     }
 
@@ -28,6 +29,13 @@ class Workspaces : Module {
         } catch (Error e) {
             return null;
         }
+    }
+
+    // Scroll on the chip to move between workspaces, like niri's own workspace scrolling.
+    public override bool on_scroll (double dy) {
+        launch ("niri msg action focus-workspace-" + (dy > 0 ? "down" : "up"));
+        Timeout.add (150, () => { refresh.begin (); return Source.REMOVE; });
+        return true;
     }
 
     public override void opened () {
