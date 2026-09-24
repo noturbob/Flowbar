@@ -1,8 +1,8 @@
 # flowbar
 
 A bar that isn't there. No dock, no reserved pixels, all your screen goes to windows. Hit
-`Super+/` and flowbar drops in from the top edge. Drive it with single keys, then hit
-`Super+/` again (or `Esc`) and it's gone.
+`Super+/` and flowbar drops in from the top edge and unfolds from corner to corner. Drive
+it with single keys, then hit `Super+/` again (or `Esc`) and it's gone.
 
 Written in [Vala](https://vala.dev) on GTK4 and
 [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell). It's native code with no
@@ -15,8 +15,10 @@ sudo pacman -S --needed vala gtk4 gtk4-layer-shell
 make install          # -> ~/.local/bin/flowbar
 ```
 
-Runtime tools it calls: `nmcli`, `bluetoothctl`, `wpctl`, `brightnessctl`, `playerctl`,
-`kitty` (for Wi‑Fi passwords), and `swaylock`.
+Runtime tools it calls: `nmcli`, `bluetoothctl`, `wpctl`, `pactl`, `brightnessctl`,
+`playerctl`, `wl-clipboard`, `makoctl`, `checkupdates` (pacman-contrib), `kitty` (Wi‑Fi
+passwords, updates) and `swaylock`. Optional: `wlsunset` for night light, `yay` for AUR
+updates.
 
 ## Summon it (niri)
 
@@ -41,17 +43,31 @@ without resizing them.
 
 ## Keys
 
+The bar has three groups: time on the left, tools in the middle, system on the right.
+
 | key | module     | inside the panel                                   |
 |-----|------------|----------------------------------------------------|
 | `t` | time       | clock, date, week, uptime                          |
 | `c` | calendar   | `h/l` day · `j/k` week · `H/L` month · `g` today   |
+| `m` | media      | `space` play/pause · `h/l` prev/next               |
+| `y` | clipboard  | `j/k` pick · `Enter` copy · `x` delete · `X` clear all |
+| `g` | screenshot | `a` area · `s` screen · `w` window · `o` open folder |
+| `n` | night      | `n` night light · `f` do not disturb               |
+| `u` | updates    | `Enter` update in kitty · `r` check now            |
 | `w` | wifi       | `j/k` pick · `Enter` connect/disconnect · `space` radio · `r` rescan |
 | `b` | bluetooth  | `j/k` pick · `Enter` connect/disconnect · `space` power |
-| `v` | volume     | `h/l` −/+5% · `m` mute                             |
+| `v` | volume     | `h/l` −/+5% · `m` mute · `j/k` + `Enter` default device · `i` inputs/outputs |
 | `d` | display    | `h/l` brightness −/+5%                             |
-| `m` | media      | `space` play/pause · `h/l` prev/next               |
 | `s` | system     | cpu, memory, temperature, battery                  |
 | `p` | power      | `l` lock · `s` suspend · `e` log out · `r` reboot · `o` power off (press twice) |
+
+Clipboard history is text only, kept in memory, and never records copies a password
+manager marks as sensitive. Do not disturb needs this in `~/.config/mako/config`:
+
+```ini
+[mode=do-not-disturb]
+invisible=1
+```
 
 Arrow keys work anywhere `h/j/k/l` do. An open panel gets first pick of keys; `Esc` closes
 the panel, a second `Esc` hides the bar. Pressing a module's key again closes its panel.
