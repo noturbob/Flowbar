@@ -51,16 +51,26 @@ public class Flowbar : Gtk.Application {
         if (shown) hide_bar (); else show_bar ();
     }
 
+    // The window (a layer surface) is made once; its contents are rebuilt on every reload,
+    // so the space it reserves, and the windows niri pushed down, stay put.
     void build () {
-        win = new ApplicationWindow (this);
-        GtkLayerShell.init_for_window (win);
-        GtkLayerShell.set_namespace (win, "flowbar");
-        GtkLayerShell.set_layer (win, GtkLayerShell.Layer.OVERLAY);
-        // Anchored to both sides: the bar runs corner to corner.
-        GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.TOP, true);
-        GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.LEFT, true);
-        GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.RIGHT, true);
-        GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
+        if (win == null) {
+            win = new ApplicationWindow (this);
+            GtkLayerShell.init_for_window (win);
+            GtkLayerShell.set_namespace (win, "flowbar");
+            GtkLayerShell.set_layer (win, GtkLayerShell.Layer.OVERLAY);
+            // Anchored to both sides: the bar runs corner to corner.
+            GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.TOP, true);
+            GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.LEFT, true);
+            GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.RIGHT, true);
+            GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
+
+            // Capture phase: our keys win over whatever widget has focus in a panel.
+            var keys = new EventControllerKey ();
+            keys.propagation_phase = PropagationPhase.CAPTURE;
+            keys.key_pressed.connect (on_key);
+            ((Widget) win).add_controller (keys);
+        }
 
         bar = new CenterBox ();
         bar.add_css_class ("bar");
@@ -91,12 +101,6 @@ public class Flowbar : Gtk.Application {
         root.append (bar);
         root.append (drawer);
         win.child = root;
-
-        // Capture phase: our keys win over whatever widget has focus in a panel.
-        var keys = new EventControllerKey ();
-        keys.propagation_phase = PropagationPhase.CAPTURE;
-        keys.key_pressed.connect (on_key);
-        ((Widget) win).add_controller (keys);
 
         load_css ();
     }
@@ -165,17 +169,17 @@ public class Flowbar : Gtk.Application {
 
     void reload () {
         Config.load ();
-        bool was = shown;
         if (tick_id != 0) Source.remove (tick_id);
-        if (hide_id != 0) Source.remove (hide_id);
-        tick_id = hide_id = zone_tick = card_tick = 0;
-        win.destroy ();
+        if (card_tick != 0) win.remove_tick_callback (card_tick);
+        tick_id = card_tick = 0;
         modules = {};
         active = null;
-        shown = false;
-        zone = 0;
         build ();
-        if (was) show_bar (); else prewarm ();
+        if (shown) {
+            refresh (true);
+            reveal (); // the new bar unfolds in place; windows only move if its height changed
+            tick ();
+        }
         message ("reloaded %s", Config.dir ());
     }
 
@@ -235,7 +239,12 @@ public class Flowbar : Gtk.Application {
         shown = true;
         refresh (true);
         win.present ();
-        // Drop .hidden only once the hidden style has been painted, so the CSS transitions run.
+        reveal ();
+        tick ();
+    }
+
+    // Drop .hidden only once the hidden style has been painted, so the CSS transitions run.
+    void reveal () {
         int frames = 0;
         root.add_tick_callback (() => {
             if (++frames < 2) return Source.CONTINUE;
@@ -243,6 +252,9 @@ public class Flowbar : Gtk.Application {
             reserve (true);
             return Source.REMOVE;
         });
+    }
+
+    void tick () {
         tick_id = Timeout.add_seconds (1, () => {
             refresh (false);
             return Source.CONTINUE;
@@ -273,7 +285,7 @@ public class Flowbar : Gtk.Application {
         if (!Config.flag ("bar", "push-windows", true)) return;
         int from = zone;
         int to = on ? bar.margin_top + bar.get_height () + 6 : 0;
-        if (zone_tick != 0) root.remove_tick_callback (zone_tick);
+        if (zone_tick != 0) win.remove_tick_callback (zone_tick);
         // settle in on show, fall away on hide
         zone_tick = tween (Config.ms (on ? 520 : 240), on, (e) => {
             int z = from + (int) ((to - from) * e);
@@ -288,7 +300,7 @@ public class Flowbar : Gtk.Application {
             return 0;
         }
         int64 start = -1;
-        return root.add_tick_callback ((w, clock) => {
+        return win.add_tick_callback ((w, clock) => {
             int64 now = clock.get_frame_time ();
             if (start < 0) start = now;
             double t = ((now - start) / 1000.0 / ms).clamp (0, 1);
@@ -312,7 +324,7 @@ public class Flowbar : Gtk.Application {
         int x = bar.margin_start + (int) p.x + m.chip.get_width () / 2 - w / 2;
         x = int.max (bar.margin_start, int.min (x, root.get_width () - bar.margin_end - w));
 
-        if (card_tick != 0) root.remove_tick_callback (card_tick);
+        if (card_tick != 0) win.remove_tick_callback (card_tick);
         card_tick = 0;
         if (!drawer.reveal_child) {
             card.margin_start = x;
