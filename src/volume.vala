@@ -25,6 +25,10 @@ class Volume : Module {
         list.moved = false;
     }
 
+    public override double level () {
+        return meter.value;
+    }
+
     string target () {
         return input ? "@DEFAULT_AUDIO_SOURCE@" : "@DEFAULT_AUDIO_SINK@";
     }
@@ -32,10 +36,10 @@ class Volume : Module {
     public override async void refresh () {
         // "Volume: 0.80" or "Volume: 0.80 [MUTED]"
         var sink = yield sh ("wpctl get-volume @DEFAULT_AUDIO_SINK@");
-        value.label = level (sink);
+        value.label = percent (sink);
         var shown = sink;
         if (input) shown = yield sh ("wpctl get-volume " + target ());
-        big.label = level (shown);
+        big.label = percent (shown);
         var f = shown.split (" ");
         meter.value = f.length > 1 ? ((int) (double.parse (f[1]) * 100 + 0.5)).clamp (0, 100) : 0;
         if ("MUTED" in shown) meter.add_css_class ("muted"); else meter.remove_css_class ("muted");
@@ -69,7 +73,7 @@ class Volume : Module {
         return Config.num ("volume", "step", 5);
     }
 
-    static string level (string wpctl) {
+    static string percent (string wpctl) {
         var f = wpctl.split (" ");
         if (f.length < 2) return "—";
         if ("MUTED" in wpctl) return "muted";

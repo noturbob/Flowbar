@@ -3,6 +3,7 @@
 // Run `flowbar` to toggle it: the first run starts the daemon and shows the bar,
 // every later run tells the running instance to show or hide it.
 // `flowbar --daemon` starts it hidden (for login), so even the first summon is instant.
+// `flowbar --peek volume` flashes one module in a small pill (for media keys), see peek.vala.
 // While it's up, one key opens a module's panel, Esc backs out.
 // Everything is configured in ~/.config/flowbar/config.ini (see config.vala), which is
 // watched: saving it rebuilds the bar in place.
@@ -12,8 +13,9 @@ using Gtk;
 delegate void Step (double eased);
 
 public class Flowbar : Gtk.Application {
-    public static bool start_hidden = false;
     Window win;
+    Peek peek;
+    Module[] loose = {}; // modules made just for peeks, when they aren't on the bar
     Box root;
     CenterBox bar;
     Box card;
@@ -34,21 +36,68 @@ public class Flowbar : Gtk.Application {
     int ticks = 0;
 
     public Flowbar () {
-        Object (application_id: "io.github.noturbob.flowbar");
+        // Every `flowbar` run hands its arguments to the one already running.
+        Object (application_id: "io.github.noturbob.flowbar", flags: ApplicationFlags.HANDLES_COMMAND_LINE);
     }
 
-    public override void activate () {
+    public override int command_line (ApplicationCommandLine cmd) {
+        var args = cmd.get_arguments ();
+        bool daemon = false;
+        string? glance_at = null;
+        for (int i = 1; i < args.length; i++) {
+            if (args[i] == "--daemon") {
+                daemon = true;
+            } else if (args[i] == "--peek" && i + 1 < args.length) {
+                glance_at = args[++i];
+            } else {
+                cmd.printerr ("usage: flowbar [--daemon] [--peek MODULE]\n");
+                return 1;
+            }
+        }
         if (win == null) {
             hold ();
             Config.load ();
             watch_config ();
             build ();
-            if (start_hidden) {
+            peek = new Peek (this);
+            if (daemon) {
                 prewarm ();
-                return;
+                peek.prewarm ();
+            }
+        } else if (daemon) {
+            return 0; // already running
+        }
+        if (glance_at != null) {
+            glance.begin (glance_at);
+        } else if (!daemon) {
+            if (shown) hide_bar (); else show_bar ();
+        }
+        return 0;
+    }
+
+    // --peek: a quick look at one module. With the bar open the chip is already on screen,
+    // so it just refreshes; otherwise the peek pill shows it.
+    async void glance (string name) {
+        Module? m = null;
+        foreach (var x in modules) {
+            if (x.name == name) m = x;
+        }
+        if (m != null && shown) {
+            yield m.refresh ();
+            return;
+        }
+        if (m == null) {
+            foreach (var x in loose) {
+                if (x.name == name) m = x;
             }
         }
-        if (shown) hide_bar (); else show_bar ();
+        if (m == null) {
+            m = make_module (name);
+            if (m == null) return;
+            m.name = name;
+            loose += m;
+        }
+        yield peek.show (m);
     }
 
     // The window (a layer surface) is made once; its contents are rebuilt on every reload,
@@ -432,6 +481,11 @@ public abstract class Module {
         key_label.label = k.char_count () == 1 ? k.up () : k;
     }
 
+    // 0-100 for modules that have a level (volume, brightness), shown by --peek; -1 if not.
+    public virtual double level () {
+        return -1;
+    }
+
     // Called as the panel opens, before its refresh.
     public virtual void opened () {}
 
@@ -545,7 +599,5 @@ Label label (string text, string? css = null) {
 }
 
 int main (string[] args) {
-    Flowbar.start_hidden = "--daemon" in args;
-    // Our only flag is handled above; GApplication would reject it as unknown.
-    return new Flowbar ().run ({ args[0] });
+    return new Flowbar ().run (args);
 }

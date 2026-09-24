@@ -56,6 +56,20 @@ binds {
 
 `--daemon` starts flowbar hidden at login and warms up its renderer, so the very first summon is instant. Every later `flowbar` just tells the running one to show or hide.
 
+### Peek on media keys
+
+`flowbar --peek <module>` flashes just that module in a small pill at the top, with its level, then lets it fade. Hold a key and it stays up. Chain it after the command your media keys already run:
+
+```kdl
+XF86AudioRaiseVolume  allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ && flowbar --peek volume"; }
+XF86AudioLowerVolume  allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1- && flowbar --peek volume"; }
+XF86AudioMute         allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle && flowbar --peek volume"; }
+XF86MonBrightnessUp   allow-when-locked=true { spawn-sh "brightnessctl --class=backlight set +10% && flowbar --peek display"; }
+XF86MonBrightnessDown allow-when-locked=true { spawn-sh "brightnessctl --class=backlight set 10%- && flowbar --peek display"; }
+```
+
+Any module can be peeked. If the bar is already open, the chip itself updates instead.
+
 <details>
 <summary><b>Tools flowbar talks to</b></summary>
 <br>
@@ -182,6 +196,7 @@ For anything past colors, drop a `style.css` next to your config. It's GTK CSS, 
 | Classes | |
 |---|---|
 | `.flow` | the root; `.flow.hidden` while it's away |
+| `.peek` · `.osd` | the `--peek` window and its pill |
 | `.bar` · `.chip` · `.chip.active` | the bar and its chips |
 | `.key` · `.icon` | a chip's key badge and icon |
 | `.card` | the panel under a chip |

@@ -61,6 +61,25 @@ window { background: transparent; }
     border-radius: var(--radius);
 }
 
+/* --peek: one module in a small pill at the top, e.g. on a volume key */
+.osd {
+    padding: 0 16px;
+    min-height: calc(var(--bar-height) - 2px);
+    border-radius: var(--radius);
+    background: alpha(var(--background), var(--opacity));
+    border: 1px solid alpha(var(--foreground), 0.08);
+    box-shadow: 0 10px 28px alpha(black, 0.45);
+    transition: opacity var(--t-fade) ease-out, transform var(--t-chip) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.peek.hidden .osd {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.92);
+    transition: opacity var(--t-quick) ease-in, transform var(--t-leave) ease-in;
+}
+.osd .icon { color: var(--accent); }
+.osd levelbar { min-width: 160px; }
+.osd levelbar trough, .osd levelbar block { min-height: 6px; }
+
 .big { font-size: 44px; font-weight: bold; letter-spacing: 2px; }
 .sub { font-size: var(--font-size); }
 .dim { font-size: 12px; color: alpha(var(--foreground), 0.5); }

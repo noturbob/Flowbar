@@ -25,6 +25,10 @@ class Brightness : Module {
         meter.value = int.parse (f[3]).clamp (0, 100);
     }
 
+    public override double level () {
+        return meter.value;
+    }
+
     static int step () {
         return Config.num ("display", "step", 5);
     }
