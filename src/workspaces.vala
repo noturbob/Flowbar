@@ -11,7 +11,7 @@ class Workspaces : Module {
     public Workspaces () {
         base ("o", "");
         value.use_markup = true;
-        value.max_width_chars = 40;
+        value.max_width_chars = 26;
         panel.width_request = 480;
         panel.append (status);
         panel.append (list);
@@ -94,7 +94,7 @@ class Workspaces : Module {
         if (!list.moved) list.pos = focused_row;
         list.set_rows (rows);
 
-        chip.append (Markup.escape_text (clip (title, 28)));
+        chip.append (Markup.escape_text (clip (title, 18)));
         value.label = chip.str.strip ();
         status.label = "Workspace %d · %d window%s".printf (focused_ws, rows.length, rows.length == 1 ? "" : "s");
     }
@@ -154,9 +154,5 @@ class Workspaces : Module {
             || layout.get_null_member ("pos_in_scrolling_layout")) return 10000;
         var pos = layout.get_array_member ("pos_in_scrolling_layout");
         return (int) (pos.get_int_element (0) * 100 + pos.get_int_element (1));
-    }
-
-    static string clip (string s, int max) {
-        return s.char_count () > max ? s.substring (0, s.index_of_nth_char (max - 1)) + "…" : s;
     }
 }

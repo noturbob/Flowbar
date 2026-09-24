@@ -33,7 +33,7 @@ window { background: transparent; }
 }
 
 .chip {
-    padding: 0 12px;
+    padding: 0 10px;
     border-radius: var(--radius);
     transition: opacity var(--t-fade) ease-out, transform var(--t-chip) cubic-bezier(0.16, 1, 0.3, 1), background-color var(--t-quick) ease;
 }

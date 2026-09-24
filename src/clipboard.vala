@@ -68,7 +68,7 @@ class Clip : Module {
         foreach (var t in items) rows += Markup.escape_text (preview (t, 56));
         list.set_rows (rows);
         empty.visible = items.length == 0;
-        value.label = items.length > 0 ? preview (items[0], 16) : "—";
+        value.label = items.length > 0 ? preview (items[0], 14) : "—";
     }
 
     // One line: collapse whitespace so multi-line copies stay readable.

@@ -84,6 +84,7 @@ Any module can be peeked. If the bar is already open, the chip itself updates in
 | media | `playerctl` |
 | clipboard | `wl-paste`, `wl-copy` (wl-clipboard) |
 | screenshot | niri's built-in screenshot actions |
+| notifications | `makoctl` (mako) |
 | night | `wlsunset` (optional), `makoctl` |
 | updates | `checkupdates` (pacman-contrib), `yay` or `paru` for the AUR |
 | power | `swaylock`, `systemctl`, `niri msg` |
@@ -108,6 +109,7 @@ Summon with <kbd>Super</kbd>+<kbd>/</kbd>. Every chip on the bar shows its key: 
 | | **center** | |
 | <kbd>y</kbd> | clipboard | <kbd>j</kbd>/<kbd>k</kbd> pick · <kbd>Enter</kbd> copy · <kbd>x</kbd> delete · <kbd>X</kbd> clear |
 | <kbd>g</kbd> | screenshot | <kbd>a</kbd> area · <kbd>s</kbd> screen · <kbd>w</kbd> window · <kbd>o</kbd> open folder |
+| <kbd>a</kbd> | notifications | on screen, then history · <kbd>Enter</kbd> act · <kbd>x</kbd> dismiss · <kbd>X</kbd> all · <kbd>r</kbd> bring back last · <kbd>f</kbd> do not disturb |
 | <kbd>n</kbd> | night | <kbd>n</kbd> night light · <kbd>f</kbd> do not disturb |
 | <kbd>u</kbd> | updates | <kbd>Enter</kbd> upgrade · <kbd>r</kbd> check now |
 | | **right** | |
@@ -135,7 +137,7 @@ radius = 22
 
 [bar]
 left   = workspaces time calendar media
-center = clipboard screenshot night updates
+center = clipboard screenshot notifications night updates
 right  = wifi bluetooth volume display system power
 margin = auto             # niri's layout `gaps`: the bar sits as far from the edges as your windows do
 height = 24               # the size of a stock waybar

@@ -125,7 +125,7 @@ public class Flowbar : Gtk.Application {
         bar.add_css_class ("bar");
         bar.margin_top = bar.margin_start = bar.margin_end = Config.gap ();
         bar.start_widget = section ("left", "workspaces time calendar media");
-        bar.center_widget = section ("center", "clipboard screenshot night updates");
+        bar.center_widget = section ("center", "clipboard screenshot notifications night updates");
         bar.end_widget = section ("right", "wifi bluetooth volume display system power");
 
         panels = new Stack ();
@@ -182,6 +182,7 @@ public class Flowbar : Gtk.Application {
         case "media": return new Media ();
         case "clipboard": return new Clip ();
         case "screenshot": return new Shot ();
+        case "notifications": return new Notifications ();
         case "night": return new Night ();
         case "updates": return new Updates ();
         case "wifi": return new Wifi ();
@@ -461,7 +462,7 @@ public abstract class Module {
         chip.add_css_class ("chip");
         chip.append (key_label);
         chip.append (icon_label);
-        value.max_width_chars = 16;
+        value.max_width_chars = 14; // fifteen chips have to share one screen width
         value.ellipsize = Pango.EllipsizeMode.END;
         chip.append (value);
         panel.add_css_class ("panel");
@@ -539,6 +540,11 @@ class Picker : Box {
             if (i++ == pos) c.add_css_class ("cursor"); else c.remove_css_class ("cursor");
         }
     }
+}
+
+// At most max characters, with an ellipsis if it was cut.
+string clip (string s, int max) {
+    return s.char_count () > max ? s.substring (0, s.index_of_nth_char (max - 1)) + "…" : s;
 }
 
 // "k   name" rows for panels that are a menu of single-key actions.
