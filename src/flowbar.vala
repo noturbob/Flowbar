@@ -2,11 +2,13 @@
 //
 // Run `flowbar` to toggle it: the first run starts the daemon and shows the bar,
 // every later run tells the running instance to show or hide it.
+// `flowbar --daemon` starts it hidden (for login), so even the first summon is instant.
 // While it's up, one key opens a module's panel, Esc backs out.
 
 using Gtk;
 
 public class Flowbar : Gtk.Application {
+    public static bool start_hidden = false;
     Window win;
     Box root;
     Box bar;
@@ -24,7 +26,13 @@ public class Flowbar : Gtk.Application {
     }
 
     public override void activate () {
-        if (win == null) build ();
+        if (win == null) {
+            build ();
+            if (start_hidden) {
+                prewarm ();
+                return;
+            }
+        }
         if (shown) hide_bar (); else show_bar ();
     }
 
@@ -76,6 +84,18 @@ public class Flowbar : Gtk.Application {
         ((Widget) win).add_controller (keys);
 
         load_css ();
+    }
+
+    // The first map of the surface costs 250ms+ (renderer setup). Pay it at login instead:
+    // map once fully transparent, without grabbing the keyboard, and unmap on the first frame.
+    void prewarm () {
+        GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.NONE);
+        win.present ();
+        root.add_tick_callback (() => {
+            win.visible = false;
+            GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
+            return Source.REMOVE;
+        });
     }
 
     void load_css () {
@@ -299,5 +319,7 @@ Label label (string text, string? css = null) {
 }
 
 int main (string[] args) {
-    return new Flowbar ().run (args);
+    Flowbar.start_hidden = "--daemon" in args;
+    // Our only flag is handled above; GApplication would reject it as unknown.
+    return new Flowbar ().run ({ args[0] });
 }

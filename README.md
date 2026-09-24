@@ -26,9 +26,18 @@ In `~/.config/niri/config.kdl`, under `binds`:
 Mod+Slash hotkey-overlay-title="Toggle flowbar" { spawn "flowbar"; }
 ```
 
-The first press starts flowbar and shows it. Later presses toggle the running instance.
-Add `spawn-at-startup "flowbar"` if you want the first summon to be instant too (it will
-show once at login, so press `Esc`).
+and start it hidden at login so the first summon is instant too:
+
+```kdl
+spawn-at-startup "flowbar" "--daemon"
+```
+
+Without the daemon, the first press cold-starts flowbar (about 1.5s) and later presses
+toggle the running instance.
+
+While the bar is up it reserves its strip of the top edge, so niri slides your windows
+down to make room and slides them back up when it leaves. Panels float over windows
+without resizing them.
 
 ## Keys
 
