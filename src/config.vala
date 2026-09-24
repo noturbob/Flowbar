@@ -69,6 +69,20 @@ class Config {
         return file.get_groups ();
     }
 
+    // The gap around the bar. `auto` (the default) uses niri's layout `gaps`, so the bar sits
+    // exactly as far from the screen edges, and from your windows, as they sit from each other.
+    public static int gap () {
+        var v = str ("bar", "margin", "auto");
+        if (v != "auto") return int.parse (v);
+        var niri = Path.build_filename (Environment.get_user_config_dir (), "niri", "config.kdl");
+        try {
+            var re = new Regex ("^\\s*gaps\\s+([0-9.]+)", RegexCompileFlags.MULTILINE);
+            MatchInfo m;
+            if (re.match (slurp (niri), 0, out m)) return (int) double.parse (m.fetch (1));
+        } catch (RegexError e) {}
+        return 4; // niri's default
+    }
+
     // Animation durations scale with [motion] speed (1.5 matches niri's `slowdown 1.5`).
     public static double ms (double base_ms) {
         return base_ms * real ("motion", "speed", 1.0).clamp (0, 10);
@@ -111,6 +125,8 @@ namespace Theme {
         sb.append ("    --font: \"%s\";\n".printf (Config.str ("theme", "font", "CommitMono Nerd Font")));
         sb.append ("    --font-size: %dpx;\n".printf (Config.num ("theme", "font-size", 15)));
         sb.append ("    --radius: %dpx;\n".printf (Config.num ("theme", "radius", 22)));
+        sb.append ("    --bar-height: %dpx;\n".printf (Config.num ("bar", "height", 24)));
+        sb.append ("    --gap: %dpx;\n".printf (Config.gap ()));
         // Durations, pre-scaled by [motion] speed.
         string[] names = { "drop", "fade", "chip", "leave", "quick" };
         int[] base_ms = { 640, 360, 560, 220, 180 };

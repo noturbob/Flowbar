@@ -74,7 +74,7 @@ public class Flowbar : Gtk.Application {
 
         bar = new CenterBox ();
         bar.add_css_class ("bar");
-        bar.margin_top = bar.margin_start = bar.margin_end = Config.num ("bar", "margin", 10);
+        bar.margin_top = bar.margin_start = bar.margin_end = Config.gap ();
         bar.start_widget = section ("left", "time calendar media");
         bar.center_widget = section ("center", "clipboard screenshot night updates");
         bar.end_widget = section ("right", "wifi bluetooth volume display system power");
@@ -284,7 +284,11 @@ public class Flowbar : Gtk.Application {
     void reserve (bool on) {
         if (!Config.flag ("bar", "push-windows", true)) return;
         int from = zone;
-        int to = on ? bar.margin_top + bar.get_height () + 6 : 0;
+        // Just the bar's footprint: niri adds its own `gaps` between this strip and the windows.
+        // measure() counts the top margin and the CSS border; get_height() leaves the border out.
+        int a, b, footprint;
+        bar.measure (Orientation.VERTICAL, -1, out a, out footprint, out a, out b);
+        int to = on ? footprint : 0;
         if (zone_tick != 0) win.remove_tick_callback (zone_tick);
         // settle in on show, fall away on hide
         zone_tick = tween (Config.ms (on ? 520 : 240), on, (e) => {

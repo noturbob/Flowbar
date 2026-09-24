@@ -19,8 +19,10 @@ window { background: transparent; }
 
 /* summon: the bar drops in and unfolds from the middle out to both corners,
    then the chips ripple outwards after it (delays are generated per chip) */
+/* sized like a waybar: chips fill its height edge to edge */
 .bar {
-    padding: 6px;
+    min-height: calc(var(--bar-height) - 2px); /* height includes the 1px border */
+    padding: 0;
     border-radius: var(--radius);
     transition: opacity var(--t-fade) ease-out, transform var(--t-drop) cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -31,8 +33,8 @@ window { background: transparent; }
 }
 
 .chip {
-    padding: 7px 14px;
-    border-radius: calc(var(--radius) - 7px);
+    padding: 0 12px;
+    border-radius: var(--radius);
     transition: opacity var(--t-fade) ease-out, transform var(--t-chip) cubic-bezier(0.16, 1, 0.3, 1), background-color var(--t-quick) ease;
 }
 .flow.hidden .chip {
@@ -54,7 +56,7 @@ window { background: transparent; }
 .chip .icon { color: var(--accent); }
 
 .card {
-    margin-top: 10px;
+    margin-top: var(--gap);
     padding: 18px 22px;
     border-radius: var(--radius);
 }
