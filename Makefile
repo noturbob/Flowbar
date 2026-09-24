@@ -3,7 +3,7 @@ VALAC  ?= valac
 
 # gtk4-layer-shell must come before gtk4 so it links ahead of libwayland-client.
 flowbar: src/*.vala
-	$(VALAC) --pkg gtk4-layer-shell-0 --pkg gtk4 -o $@ $^
+	$(VALAC) --pkg gtk4-layer-shell-0 --pkg gtk4 --pkg json-glib-1.0 -o $@ $^
 
 CONFIG ?= $(HOME)/.config/flowbar
 

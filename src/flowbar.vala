@@ -75,7 +75,7 @@ public class Flowbar : Gtk.Application {
         bar = new CenterBox ();
         bar.add_css_class ("bar");
         bar.margin_top = bar.margin_start = bar.margin_end = Config.gap ();
-        bar.start_widget = section ("left", "time calendar media");
+        bar.start_widget = section ("left", "workspaces time calendar media");
         bar.center_widget = section ("center", "clipboard screenshot night updates");
         bar.end_widget = section ("right", "wifi bluetooth volume display system power");
 
@@ -127,6 +127,7 @@ public class Flowbar : Gtk.Application {
 
     static Module? make_module (string name) {
         switch (name) {
+        case "workspaces": return new Workspaces ();
         case "time": return new Clock ();
         case "calendar": return new Cal ();
         case "media": return new Media ();

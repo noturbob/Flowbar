@@ -37,7 +37,7 @@ Most bars rent a strip of your screen forever to show you the time. flowbar only
 flowbar targets Arch Linux with [niri](https://github.com/YaLTeR/niri). Any Wayland compositor with layer-shell should work, but niri is where it's at home.
 
 ```sh
-sudo pacman -S --needed vala gtk4 gtk4-layer-shell
+sudo pacman -S --needed vala gtk4 gtk4-layer-shell json-glib
 git clone https://github.com/noturbob/Flowbar && cd Flowbar
 make install
 ```
@@ -62,6 +62,7 @@ binds {
 
 | Module | Uses |
 |---|---|
+| workspaces | `niri msg` (niri's IPC) |
 | wifi | `nmcli` (NetworkManager) |
 | bluetooth | `bluetoothctl` (bluez-utils) |
 | volume | `wpctl`, `pactl` (PipeWire) |
@@ -86,6 +87,7 @@ Summon with <kbd>Super</kbd>+<kbd>/</kbd>. Every chip on the bar shows its key: 
 | Key | Module | Inside the panel |
 |:---:|---|---|
 | | **left** | |
+| <kbd>o</kbd> | workspaces | every window by workspace · <kbd>j</kbd>/<kbd>k</kbd> + <kbd>Enter</kbd> focus · <kbd>1</kbd>–<kbd>9</kbd> go to workspace |
 | <kbd>t</kbd> | time | clock, date, week, uptime |
 | <kbd>c</kbd> | calendar | <kbd>h</kbd>/<kbd>l</kbd> day · <kbd>j</kbd>/<kbd>k</kbd> week · <kbd>H</kbd>/<kbd>L</kbd> month · <kbd>g</kbd> today |
 | <kbd>m</kbd> | media | <kbd>space</kbd> play/pause · <kbd>h</kbd>/<kbd>l</kbd> previous/next |
@@ -118,7 +120,7 @@ font = CommitMono Nerd Font
 radius = 22
 
 [bar]
-left   = time calendar media
+left   = workspaces time calendar media
 center = clipboard screenshot night updates
 right  = wifi bluetooth volume display system power
 margin = auto             # niri's layout `gaps`: the bar sits as far from the edges as your windows do
@@ -255,7 +257,7 @@ class Uptime : Module {
     Label since = label ("", "sub");
 
     public Uptime () {
-        base ("o", "");          // its key and icon
+        base ("z", "");          // its key and icon
         every = 30;                    // refresh every 30 seconds while the bar is up
         panel.append (label ("Uptime", "status"));
         panel.append (since);
