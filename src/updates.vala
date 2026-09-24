@@ -2,7 +2,6 @@ using Gtk;
 
 // Pending package updates from the repos (checkupdates) and the AUR (yay -Qua).
 class Updates : Module {
-    const int64 STALE = 30 * 60 * TimeSpan.SECOND; // both checks hit the network
     const int SHOW = 10;
     Label status = label ("", "status");
     Label pkgs = label ("", "sub");
@@ -16,11 +15,13 @@ class Updates : Module {
         pkgs.use_markup = true;
         panel.append (status);
         panel.append (pkgs);
-        panel.append (label ("enter update in kitty · r check now", "dim"));
+        panel.append (label ("enter update · r check now", "dim"));
     }
 
     public override async void refresh () {
-        if (busy || get_monotonic_time () - checked < STALE && checked != 0) return;
+        // Both checks hit the network, so only every [updates] interval minutes.
+        int64 stale = Config.num ("updates", "interval", 30) * TimeSpan.MINUTE;
+        if (busy || get_monotonic_time () - checked < stale && checked != 0) return;
         busy = true;
         status.label = "Checking…";
         if (checked == 0) value.label = "…";
@@ -31,8 +32,10 @@ class Updates : Module {
         foreach (var l in (yield sh ("checkupdates")).split ("\n")) {
             if (l.strip () != "") lines += l;
         }
-        if (Environment.find_program_in_path ("yay") != null) {
-            foreach (var l in (yield sh ("yay -Qua")).split ("\n")) {
+        // AUR updates, if the update command is an AUR helper that can list them.
+        var helper = updater ().split (" ")[0];
+        if ((helper == "yay" || helper == "paru") && Environment.find_program_in_path (helper) != null) {
+            foreach (var l in (yield sh (helper + " -Qua")).split ("\n")) {
                 if (l.strip () == "") continue;
                 lines += l;
                 aur++;
@@ -56,11 +59,16 @@ class Updates : Module {
         pkgs.visible = lines.length > 0;
     }
 
+    // yay or paru alone run a full -Syu.
+    static string updater () {
+        return Config.str ("commands", "update", "yay");
+    }
+
     public override bool on_key (string k) {
         switch (k) {
         case "Return":
             dismiss ();
-            launch ("kitty --hold -e yay"); // yay alone runs a full -Syu
+            in_terminal (updater ());
             checked = 0; // recheck next time the bar opens
             return true;
         case "r":

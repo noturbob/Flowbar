@@ -2,9 +2,8 @@ using Gtk;
 
 // Night light and do-not-disturb. Night light replaces nightlight.sh, which started wlsunset
 // with no location, so wlsunset followed its default day/night schedule and "on" did
-// nothing during the day. Low 4000K / high 4001K keeps the screen warm around the clock.
+// nothing during the day. Low T / high T+1 keeps the screen warm around the clock.
 class Night : Module {
-    const string WARM = "wlsunset -t 4000 -T 4001";
     const string MODE = "[mode=do-not-disturb]";
     Label night_row = key_row ("n", "");
     Label dnd_row = key_row ("f", "");
@@ -45,7 +44,7 @@ class Night : Module {
     }
 
     static string state (bool on) {
-        return on ? "<span foreground='#a6e3a1'>on</span>" : "<span alpha='45%'>off</span>";
+        return on ? "<span foreground='%s'>on</span>".printf (Theme.color ("good")) : "<span alpha='45%'>off</span>";
     }
 
     public override bool on_key (string k) {
@@ -54,7 +53,8 @@ class Night : Module {
             if (night) {
                 act.begin ("pkill -x wlsunset");
             } else {
-                launch (WARM); // keeps running; night light lasts until toggled off
+                int t = Config.num ("night", "temperature", 4000);
+                launch ("wlsunset -t %d -T %d".printf (t, t + 1)); // lasts until toggled off
                 Timeout.add (300, () => { refresh.begin (); return Source.REMOVE; });
             }
             return true;

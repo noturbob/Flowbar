@@ -4,6 +4,8 @@
 // every later run tells the running instance to show or hide it.
 // `flowbar --daemon` starts it hidden (for login), so even the first summon is instant.
 // While it's up, one key opens a module's panel, Esc backs out.
+// Everything is configured in ~/.config/flowbar/config.ini (see config.vala), which is
+// watched: saving it rebuilds the bar in place.
 
 using Gtk;
 
@@ -24,6 +26,10 @@ public class Flowbar : Gtk.Application {
     uint hide_id = 0;
     uint zone_tick = 0;
     uint card_tick = 0;
+    uint reload_id = 0;
+    FileMonitor monitor;
+    CssProvider? css_main = null;
+    CssProvider? css_user = null;
     int zone = 0;
     int ticks = 0;
 
@@ -33,6 +39,9 @@ public class Flowbar : Gtk.Application {
 
     public override void activate () {
         if (win == null) {
+            hold ();
+            Config.load ();
+            watch_config ();
             build ();
             if (start_hidden) {
                 prewarm ();
@@ -43,7 +52,6 @@ public class Flowbar : Gtk.Application {
     }
 
     void build () {
-        hold ();
         win = new ApplicationWindow (this);
         GtkLayerShell.init_for_window (win);
         GtkLayerShell.set_namespace (win, "flowbar");
@@ -54,23 +62,16 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.RIGHT, true);
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
-        Module[] left = { new Clock (), new Cal (), new Media () };
-        Module[] center = { new Clip (), new Shot (), new Night (), new Updates () };
-        Module[] right = { new Wifi (), new Bluetooth (), new Volume (), new Brightness (), new Sys (), new Power () };
-
         bar = new CenterBox ();
         bar.add_css_class ("bar");
-        bar.margin_top = bar.margin_start = bar.margin_end = 10;
-        bar.start_widget = section (left);
-        bar.center_widget = section (center);
-        bar.end_widget = section (right);
-        foreach (var m in left) modules += m;
-        foreach (var m in center) modules += m;
-        foreach (var m in right) modules += m;
+        bar.margin_top = bar.margin_start = bar.margin_end = Config.num ("bar", "margin", 10);
+        bar.start_widget = section ("left", "time calendar media");
+        bar.center_widget = section ("center", "clipboard screenshot night updates");
+        bar.end_widget = section ("right", "wifi bluetooth volume display system power");
 
         panels = new Stack ();
         panels.transition_type = StackTransitionType.CROSSFADE;
-        panels.transition_duration = 220;
+        panels.transition_duration = (uint) Config.ms (220);
         panels.interpolate_size = true;
         panels.hhomogeneous = panels.vhomogeneous = false;
         foreach (var m in modules) panels.add_named (m.panel, m.key);
@@ -81,7 +82,7 @@ public class Flowbar : Gtk.Application {
         card.append (panels);
         drawer = new Revealer ();
         drawer.transition_type = RevealerTransitionType.SLIDE_DOWN;
-        drawer.transition_duration = 320;
+        drawer.transition_duration = (uint) Config.ms (320);
         drawer.child = card;
 
         root = new Box (Orientation.VERTICAL, 0);
@@ -100,10 +101,81 @@ public class Flowbar : Gtk.Application {
         load_css ();
     }
 
-    static Box section (Module[] mods) {
+    // One group of chips, from a `[bar]` line like `left = time calendar media`.
+    Box section (string side, string fallback) {
         var box = new Box (Orientation.HORIZONTAL, 2);
-        foreach (var m in mods) box.append (m.chip);
+        foreach (var name in Config.list ("bar", side, fallback)) {
+            var m = make_module (name);
+            if (m == null) continue;
+            m.name = name;
+            var key = Config.maybe ("keys", name);
+            if (key != null) m.rekey (key);
+            var icon = Config.maybe ("icons", name);
+            if (icon != null) m.icon_label.label = icon;
+            foreach (var other in modules) {
+                if (other.key == m.key) warning ("config.ini: %s and %s both use key '%s'", other.name, name, m.key);
+            }
+            modules += m;
+            box.append (m.chip);
+        }
         return box;
+    }
+
+    static Module? make_module (string name) {
+        switch (name) {
+        case "time": return new Clock ();
+        case "calendar": return new Cal ();
+        case "media": return new Media ();
+        case "clipboard": return new Clip ();
+        case "screenshot": return new Shot ();
+        case "night": return new Night ();
+        case "updates": return new Updates ();
+        case "wifi": return new Wifi ();
+        case "bluetooth": return new Bluetooth ();
+        case "volume": return new Volume ();
+        case "display": return new Brightness ();
+        case "system": return new Sys ();
+        case "power": return new Power ();
+        }
+        warning ("config.ini: unknown module '%s'", name);
+        return null;
+    }
+
+    // Save config.ini or style.css and the bar rebuilds itself.
+    void watch_config () {
+        DirUtils.create_with_parents (Config.dir (), 0755);
+        try {
+            monitor = File.new_for_path (Config.dir ()).monitor_directory (FileMonitorFlags.NONE);
+            monitor.changed.connect ((file) => {
+                var n = file.get_basename ();
+                if (n != "config.ini" && n != "style.css") return;
+                // Editors often write a file in several steps; act once they're done.
+                if (reload_id != 0) Source.remove (reload_id);
+                reload_id = Timeout.add (150, () => {
+                    reload_id = 0;
+                    reload ();
+                    return Source.REMOVE;
+                });
+            });
+        } catch (Error e) {
+            warning ("can't watch %s: %s", Config.dir (), e.message);
+        }
+    }
+
+    void reload () {
+        Config.load ();
+        bool was = shown;
+        if (tick_id != 0) Source.remove (tick_id);
+        if (hide_id != 0) Source.remove (hide_id);
+        tick_id = hide_id = zone_tick = card_tick = 0;
+        win.destroy ();
+        modules = {};
+        active = null;
+        shown = false;
+        zone = 0;
+        build ();
+        if (was) show_bar (); else prewarm ();
+        message ("reloaded %s", Config.dir ());
     }
 
     // The first map of the surface costs 250ms+ (renderer setup). Pay it at login instead:
@@ -120,25 +192,38 @@ public class Flowbar : Gtk.Application {
 
     void load_css () {
         var display = Gdk.Display.get_default ();
-        var css = new CssProvider ();
+        if (css_main != null) StyleContext.remove_provider_for_display (display, css_main);
+        if (css_user != null) StyleContext.remove_provider_for_display (display, css_user);
+
+        var sb = new StringBuilder (Theme.css_vars ());
+        sb.append (CSS);
         // Chips cascade in from the middle of the bar outwards to both corners.
-        var cascade = new StringBuilder (CSS);
         double mid = (modules.length - 1) / 2.0;
         for (int i = 0; i < modules.length; i++) {
             modules[i].chip.add_css_class ("n%d".printf (i));
-            int ms = 90 + (int) ((i - mid).abs () * 40);
-            cascade.append (".chip.n%d { transition-delay: %dms, %dms, 0ms; }\n".printf (i, ms, ms));
+            int ms = (int) Config.ms (90 + (i - mid).abs () * 40);
+            sb.append (".chip.n%d { transition-delay: %dms, %dms, 0ms; }\n".printf (i, ms, ms));
         }
-        cascade.append (".flow.hidden .chip { transition-delay: 0ms; }\n");
-        css.load_from_string (cascade.str);
-        StyleContext.add_provider_for_display (display, css, STYLE_PROVIDER_PRIORITY_APPLICATION);
+        sb.append (".flow.hidden .chip { transition-delay: 0ms; }\n");
+        css_main = provider ("flowbar", display, STYLE_PROVIDER_PRIORITY_APPLICATION);
+        css_main.load_from_string (sb.str);
 
-        var user = Path.build_filename (Environment.get_user_config_dir (), "flowbar", "style.css");
+        var user = Path.build_filename (Config.dir (), "style.css");
+        css_user = null;
         if (FileUtils.test (user, FileTest.EXISTS)) {
-            var over = new CssProvider ();
-            over.load_from_path (user);
-            StyleContext.add_provider_for_display (display, over, STYLE_PROVIDER_PRIORITY_USER);
+            css_user = provider (user, display, STYLE_PROVIDER_PRIORITY_USER);
+            css_user.load_from_path (user);
         }
+    }
+
+    // CSS mistakes are reported with a line number instead of being silently dropped.
+    static CssProvider provider (string name, Gdk.Display display, uint priority) {
+        var css = new CssProvider ();
+        css.parsing_error.connect ((section, err) => {
+            warning ("%s:%d: %s", name, (int) section.get_start_location ().lines + 1, err.message);
+        });
+        StyleContext.add_provider_for_display (display, css, priority);
+        return css;
     }
 
     void show_bar () {
@@ -172,7 +257,7 @@ public class Flowbar : Gtk.Application {
             Source.remove (tick_id);
             tick_id = 0;
         }
-        hide_id = Timeout.add (280, () => {
+        hide_id = Timeout.add ((uint) Config.ms (280), () => {
             win.visible = false;
             hide_id = 0;
             return Source.REMOVE;
@@ -184,11 +269,12 @@ public class Flowbar : Gtk.Application {
     // niri snaps windows to a new working area without animating, so we grow the strip a
     // little every frame, eased like the bar's own drop, and the windows glide with it.
     void reserve (bool on) {
+        if (!Config.flag ("bar", "push-windows", true)) return;
         int from = zone;
         int to = on ? bar.margin_top + bar.get_height () + 6 : 0;
         if (zone_tick != 0) root.remove_tick_callback (zone_tick);
         // settle in on show, fall away on hide
-        zone_tick = tween (on ? 520 : 240, on, (e) => {
+        zone_tick = tween (Config.ms (on ? 520 : 240), on, (e) => {
             int z = from + (int) ((to - from) * e);
             if (z != zone) GtkLayerShell.set_exclusive_zone (win, zone = z);
         });
@@ -196,6 +282,10 @@ public class Flowbar : Gtk.Application {
 
     // Call step with 0..1 eased progress every frame for ms; ease-out or ease-in.
     uint tween (double ms, bool ease_out, owned Step step) {
+        if (ms <= 0) {
+            step (1); // [motion] speed = 0: no animation
+            return 0;
+        }
         int64 start = -1;
         return root.add_tick_callback ((w, clock) => {
             int64 now = clock.get_frame_time ();
@@ -228,7 +318,7 @@ public class Flowbar : Gtk.Application {
             return;
         }
         int from = card.margin_start;
-        card_tick = tween (320, true, (e) => {
+        card_tick = tween (Config.ms (320), true, (e) => {
             card.margin_start = from + (int) ((x - from) * e);
         });
     }
@@ -286,7 +376,10 @@ public class Flowbar : Gtk.Application {
 
 // One letter on the bar: a chip that's always visible and a panel that opens under it.
 public abstract class Module {
+    public string name = "";
     public string key;
+    public Label key_label;
+    public Label icon_label;
     public Box chip = new Box (Orientation.HORIZONTAL, 7);
     public Label value = new Label ("");
     public Box panel = new Box (Orientation.VERTICAL, 6);
@@ -294,9 +387,11 @@ public abstract class Module {
 
     protected Module (string key, string icon) {
         this.key = key;
+        key_label = label (key.up (), "key");
+        icon_label = label (icon, "icon");
         chip.add_css_class ("chip");
-        chip.append (label (key.up (), "key"));
-        chip.append (label (icon, "icon"));
+        chip.append (key_label);
+        chip.append (icon_label);
         value.max_width_chars = 16;
         value.ellipsize = Pango.EllipsizeMode.END;
         chip.append (value);
@@ -309,6 +404,12 @@ public abstract class Module {
     protected async void act (string cmd) {
         yield sh (cmd);
         yield refresh ();
+    }
+
+    // Keys are Gdk key names: a letter, or e.g. F1, comma, slash.
+    public void rekey (string k) {
+        key = k;
+        key_label.label = k.char_count () == 1 ? k.up () : k;
     }
 
     // Called as the panel opens, before its refresh.
@@ -375,7 +476,7 @@ Label key_row (string key, string text) {
 }
 
 string keyed (string key, string text) {
-    return "<b><span foreground='#cba6f7'>%s</span></b>   %s".printf (key, text);
+    return "<b><span foreground='%s'>%s</span></b>   %s".printf (Theme.accent (), key, text);
 }
 
 async string sh (string cmd) {
@@ -389,6 +490,12 @@ async string sh (string cmd) {
     } catch (Error e) {
         return "";
     }
+}
+
+// Run an interactive command in the configured terminal, kept open until you press Enter.
+void in_terminal (string cmd) {
+    var term = Config.str ("commands", "terminal", "kitty -e");
+    launch (term + " sh -c " + Shell.quote (cmd + "; echo; read -rp 'Press Enter to close ' _"));
 }
 
 void launch (string cmd) {

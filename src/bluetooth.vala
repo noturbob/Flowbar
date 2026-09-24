@@ -43,7 +43,7 @@ class Bluetooth : Module {
             var name = Markup.escape_text (f[2]);
             if (f[1] in linked) {
                 first = first ?? f[2];
-                rows += "<span foreground='#cba6f7'>●</span>  <b>%s</b>".printf (name);
+                rows += "<span foreground='%s'>●</span>  <b>%s</b>".printf (Theme.accent (), name);
             } else {
                 rows += "<span alpha='35%'>○</span>  %s".printf (name);
             }

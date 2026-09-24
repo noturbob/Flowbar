@@ -3,7 +3,9 @@ using Gtk;
 class Power : Module {
     const string[] KEYS = { "l", "s", "e", "r", "o" };
     const string[] NAMES = { "lock", "suspend", "log out", "reboot", "power off" };
-    const string[] CMDS = {
+    // [commands] keys and their defaults, in KEYS order
+    const string[] COMMANDS = { "lock", "suspend", "logout", "reboot", "poweroff" };
+    const string[] DEFAULTS = {
         "swaylock",
         "systemctl suspend",
         "niri msg action quit --skip-confirmation",
@@ -39,7 +41,7 @@ class Power : Module {
         if (i == KEYS.length) return false;
         if (armed == i) {
             dismiss ();
-            launch (CMDS[i]);
+            launch (Config.str ("commands", COMMANDS[i], DEFAULTS[i]));
             i = -1;
         }
         armed = i;

@@ -11,7 +11,7 @@ class Brightness : Module {
         panel.width_request = 300;
         panel.append (big);
         panel.append (meter);
-        panel.append (label ("h/l −/+5%", "dim"));
+        panel.append (label ("h/l −/+%d%%".printf (step ()), "dim"));
     }
 
     public override async void refresh () {
@@ -25,10 +25,14 @@ class Brightness : Module {
         meter.value = int.parse (f[3]).clamp (0, 100);
     }
 
+    static int step () {
+        return Config.num ("display", "step", 5);
+    }
+
     public override bool on_key (string k) {
         switch (k) {
-        case "h": case "j": act.begin (CTL + "set 5%-"); return true;
-        case "l": case "k": act.begin (CTL + "set 5%+"); return true;
+        case "h": case "j": act.begin (CTL + "set %d%%-".printf (step ())); return true;
+        case "l": case "k": act.begin (CTL + "set %d%%+".printf (step ())); return true;
         }
         return false;
     }

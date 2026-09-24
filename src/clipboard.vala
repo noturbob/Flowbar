@@ -3,12 +3,14 @@ using Gtk;
 // Clipboard history, replacing clipboard.sh without needing cliphist: wl-paste watches the
 // clipboard for as long as flowbar runs and hands every new text copy to us.
 class Clip : Module {
-    const int KEEP = 30;
     // Skip copies a password manager marks as secret; end each entry with a NUL.
     const string WATCH = "[ \"$CLIPBOARD_STATE\" = data ] || exit 0; cat; printf '\\0'";
     Picker list = new Picker ();
     Label empty = label ("Nothing copied yet", "dim");
-    string[] items = {}; // newest first
+    // One watcher and one history per process, so both survive a config reload.
+    static string[] items = {}; // newest first
+    static bool watching = false;
+    static Clip? current = null; // the instance on the bar now, to repaint
     // ponytail: history lives in memory and is gone after logout; persist it if that bites.
 
     public Clip () {
@@ -18,10 +20,14 @@ class Clip : Module {
         panel.append (empty);
         panel.append (list);
         panel.append (label ("j/k pick · enter copy · x delete · X clear all", "dim"));
-        watch.begin ();
+        current = this;
+        if (!watching) {
+            watching = true;
+            watch.begin ();
+        }
     }
 
-    async void watch () {
+    static async void watch () {
         try {
             // pdeathsig: the watcher dies with us instead of lingering after a restart.
             var p = new Subprocess (SubprocessFlags.STDOUT_PIPE, "setpriv", "--pdeathsig", "TERM", "--",
@@ -39,13 +45,14 @@ class Clip : Module {
         }
     }
 
-    void remember (string text) {
+    static void remember (string text) {
+        int keep = Config.num ("clipboard", "keep", 30);
         string[] next = { text };
         foreach (var t in items) {
-            if (t != text && next.length < KEEP) next += t;
+            if (t != text && next.length < keep) next += t;
         }
         items = next;
-        paint ();
+        if (current != null) current.paint ();
     }
 
     public override void opened () {

@@ -16,7 +16,7 @@ class Volume : Module {
         panel.append (meter);
         panel.append (heading);
         panel.append (list);
-        panel.append (label ("h/l −/+5% · m mute · j/k pick · enter use · i inputs/outputs", "dim"));
+        panel.append (label ("h/l −/+%d%% · m mute · j/k pick · enter use · i inputs/outputs".printf (step ()), "dim"));
     }
 
     // Always open on outputs, with the cursor on the current default.
@@ -54,7 +54,7 @@ class Volume : Module {
             var desc = Markup.escape_text (l.substring (13));
             if (name == current) {
                 if (!list.moved) list.pos = found.length;
-                rows += "<span foreground='#cba6f7'>●</span>  <b>%s</b>".printf (desc);
+                rows += "<span foreground='%s'>●</span>  <b>%s</b>".printf (Theme.accent (), desc);
             } else {
                 rows += "<span alpha='35%'>○</span>  %s".printf (desc);
             }
@@ -63,6 +63,10 @@ class Volume : Module {
         names = found;
         list.set_rows (rows);
         heading.label = input ? "inputs" : "outputs";
+    }
+
+    static int step () {
+        return Config.num ("volume", "step", 5);
     }
 
     static string level (string wpctl) {
@@ -75,8 +79,8 @@ class Volume : Module {
     public override bool on_key (string k) {
         if (list.move (k)) return true;
         switch (k) {
-        case "h": act.begin ("wpctl set-volume %s 5%%-".printf (target ())); return true;
-        case "l": act.begin ("wpctl set-volume -l 1.0 %s 5%%+".printf (target ())); return true;
+        case "h": act.begin ("wpctl set-volume %s %d%%-".printf (target (), step ())); return true;
+        case "l": act.begin ("wpctl set-volume -l 1.0 %s %d%%+".printf (target (), step ())); return true;
         case "m": act.begin ("wpctl set-mute %s toggle".printf (target ())); return true;
         case "i":
             input = !input;

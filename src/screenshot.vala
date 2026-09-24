@@ -6,7 +6,6 @@ class Shot : Module {
     const string[] KEYS = { "a", "s", "w" };
     const string[] NAMES = { "area", "screen", "window" };
     const string[] ACTIONS = { "screenshot", "screenshot-screen", "screenshot-window" };
-    const string DIR = "~/Pictures/Screenshots"; // niri's screenshot-path
 
     public Shot () {
         base ("g", "");
@@ -16,7 +15,12 @@ class Shot : Module {
         panel.append (label ("Screenshot", "status"));
         for (int i = 0; i < KEYS.length; i++) panel.append (key_row (KEYS[i], NAMES[i]));
         panel.append (key_row ("o", "open folder"));
-        panel.append (label ("saved to %s and copied".printf (DIR), "dim"));
+        panel.append (label ("saved to %s and copied".printf (dir ()), "dim"));
+    }
+
+    // Match niri's screenshot-path.
+    static string dir () {
+        return Config.str ("screenshot", "dir", "~/Pictures/Screenshots");
     }
 
     public override async void refresh () {}
@@ -24,7 +28,7 @@ class Shot : Module {
     public override bool on_key (string k) {
         if (k == "o") {
             dismiss ();
-            launch ("xdg-open " + Shell.quote (DIR.replace ("~", Environment.get_home_dir ())));
+            launch ("xdg-open " + Shell.quote (dir ().replace ("~", Environment.get_home_dir ())));
             return true;
         }
         int i = 0;

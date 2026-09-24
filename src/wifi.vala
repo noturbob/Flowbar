@@ -71,7 +71,7 @@ class Wifi : Module {
     static string bars (int signal) {
         string[] b = { "▂", "▄", "▆", "█" };
         int n = signal > 75 ? 4 : signal > 50 ? 3 : signal > 25 ? 2 : 1;
-        var s = "<span foreground='#cba6f7'>";
+        var s = "<span foreground='%s'>".printf (Theme.accent ());
         for (int i = 0; i < 4; i++) s += (i == n ? "</span><span alpha='25%'>" : "") + b[i];
         return s + "</span>";
     }
@@ -112,7 +112,7 @@ class Wifi : Module {
         } else {
             // New secured network: nmcli asks for the password in a terminal.
             dismiss ();
-            launch ("kitty -e nmcli --ask device wifi connect " + q);
+            in_terminal ("nmcli --ask device wifi connect " + q);
             return;
         }
         yield refresh ();
