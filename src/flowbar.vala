@@ -97,7 +97,7 @@ public class Flowbar : Gtk.Application {
 
         root = new Box (Orientation.VERTICAL, 0);
         root.add_css_class ("flow");
-        root.add_css_class ("hidden");
+        if (!shown) root.add_css_class ("hidden"); // a reload while open restyles in place
         root.append (bar);
         root.append (drawer);
         win.child = root;
@@ -177,7 +177,7 @@ public class Flowbar : Gtk.Application {
         build ();
         if (shown) {
             refresh (true);
-            reveal (); // the new bar unfolds in place; windows only move if its height changed
+            reserve (true); // windows only move if the bar's height or margin changed
             tick ();
         }
         message ("reloaded %s", Config.dir ());
