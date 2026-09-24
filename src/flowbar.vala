@@ -7,11 +7,14 @@
 
 using Gtk;
 
+delegate void Step (double eased);
+
 public class Flowbar : Gtk.Application {
     public static bool start_hidden = false;
     Window win;
     Box root;
-    Box bar;
+    CenterBox bar;
+    Box card;
     Revealer drawer;
     Stack panels;
     Module[] modules;
@@ -20,6 +23,7 @@ public class Flowbar : Gtk.Application {
     uint tick_id = 0;
     uint hide_id = 0;
     uint zone_tick = 0;
+    uint card_tick = 0;
     int zone = 0;
     int ticks = 0;
 
@@ -44,28 +48,36 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.init_for_window (win);
         GtkLayerShell.set_namespace (win, "flowbar");
         GtkLayerShell.set_layer (win, GtkLayerShell.Layer.OVERLAY);
+        // Anchored to both sides: the bar runs corner to corner.
         GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.TOP, true);
+        GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.LEFT, true);
+        GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.RIGHT, true);
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
-        modules = { new Clock (), new Cal (), new Wifi (), new Bluetooth (), new Volume (), new Brightness (), new Media (), new Sys (), new Power () };
+        Module[] left = { new Clock (), new Cal (), new Media () };
+        Module[] center = {};
+        Module[] right = { new Wifi (), new Bluetooth (), new Volume (), new Brightness (), new Sys (), new Power () };
 
-        bar = new Box (Orientation.HORIZONTAL, 2);
+        bar = new CenterBox ();
         bar.add_css_class ("bar");
-        bar.halign = Align.CENTER;
-        bar.margin_top = 10;
+        bar.margin_top = bar.margin_start = bar.margin_end = 10;
+        bar.start_widget = section (left);
+        bar.center_widget = section (center);
+        bar.end_widget = section (right);
+        foreach (var m in left) modules += m;
+        foreach (var m in center) modules += m;
+        foreach (var m in right) modules += m;
+
         panels = new Stack ();
         panels.transition_type = StackTransitionType.CROSSFADE;
         panels.transition_duration = 220;
         panels.interpolate_size = true;
         panels.hhomogeneous = panels.vhomogeneous = false;
-        foreach (var m in modules) {
-            bar.append (m.chip);
-            panels.add_named (m.panel, m.key);
-        }
+        foreach (var m in modules) panels.add_named (m.panel, m.key);
 
-        var card = new Box (Orientation.VERTICAL, 0);
+        card = new Box (Orientation.VERTICAL, 0);
         card.add_css_class ("card");
-        card.halign = Align.CENTER;
+        card.halign = Align.START; // x is set per panel, under its chip
         card.append (panels);
         drawer = new Revealer ();
         drawer.transition_type = RevealerTransitionType.SLIDE_DOWN;
@@ -88,6 +100,12 @@ public class Flowbar : Gtk.Application {
         load_css ();
     }
 
+    static Box section (Module[] mods) {
+        var box = new Box (Orientation.HORIZONTAL, 2);
+        foreach (var m in mods) box.append (m.chip);
+        return box;
+    }
+
     // The first map of the surface costs 250ms+ (renderer setup). Pay it at login instead:
     // map once fully transparent, without grabbing the keyboard, and unmap on the first frame.
     void prewarm () {
@@ -103,7 +121,16 @@ public class Flowbar : Gtk.Application {
     void load_css () {
         var display = Gdk.Display.get_default ();
         var css = new CssProvider ();
-        css.load_from_string (CSS);
+        // Chips cascade in from the middle of the bar outwards to both corners.
+        var cascade = new StringBuilder (CSS);
+        double mid = (modules.length - 1) / 2.0;
+        for (int i = 0; i < modules.length; i++) {
+            modules[i].chip.add_css_class ("n%d".printf (i));
+            int ms = 90 + (int) ((i - mid).abs () * 40);
+            cascade.append (".chip.n%d { transition-delay: %dms, %dms, 0ms; }\n".printf (i, ms, ms));
+        }
+        cascade.append (".flow.hidden .chip { transition-delay: 0ms; }\n");
+        css.load_from_string (cascade.str);
         StyleContext.add_provider_for_display (display, css, STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         var user = Path.build_filename (Environment.get_user_config_dir (), "flowbar", "style.css");
@@ -159,20 +186,50 @@ public class Flowbar : Gtk.Application {
     void reserve (bool on) {
         int from = zone;
         int to = on ? bar.margin_top + bar.get_height () + 6 : 0;
-        double ms = on ? 520 : 240;
-        int64 start = -1;
         if (zone_tick != 0) root.remove_tick_callback (zone_tick);
-        zone_tick = root.add_tick_callback ((w, clock) => {
+        // settle in on show, fall away on hide
+        zone_tick = tween (on ? 520 : 240, on, (e) => {
+            int z = from + (int) ((to - from) * e);
+            if (z != zone) GtkLayerShell.set_exclusive_zone (win, zone = z);
+        });
+    }
+
+    // Call step with 0..1 eased progress every frame for ms; ease-out or ease-in.
+    uint tween (double ms, bool ease_out, owned Step step) {
+        int64 start = -1;
+        return root.add_tick_callback ((w, clock) => {
             int64 now = clock.get_frame_time ();
             if (start < 0) start = now;
             double t = ((now - start) / 1000.0 / ms).clamp (0, 1);
             double u = 1 - t;
-            double eased = on ? 1 - u * u * u * u : t * t; // settle in on show, fall away on hide
-            int z = from + (int) ((to - from) * eased);
-            if (z != zone) GtkLayerShell.set_exclusive_zone (win, zone = z);
-            if (t < 1) return Source.CONTINUE;
-            zone_tick = 0;
-            return Source.REMOVE;
+            step (ease_out ? 1 - u * u * u * u : t * t);
+            return t < 1 ? Source.CONTINUE : Source.REMOVE;
+        });
+    }
+
+    // Center the card under its chip, kept on screen. Glide there if a card is already open.
+    void place_card (Module m) {
+        // Measure against the bar, not the screen: the bar is scaled while it unfolds.
+        Graphene.Point origin = { 0, 0 };
+        Graphene.Point p;
+        m.chip.compute_point (bar, origin, out p);
+        int a, b, card_w, stack_w, panel_w;
+        card.measure (Orientation.HORIZONTAL, -1, out a, out card_w, out a, out b);
+        panels.measure (Orientation.HORIZONTAL, -1, out a, out stack_w, out a, out b);
+        m.panel.measure (Orientation.HORIZONTAL, -1, out a, out panel_w, out a, out b);
+        int w = panel_w + card_w - stack_w; // the panel plus the card's padding and border
+        int x = bar.margin_start + (int) p.x + m.chip.get_width () / 2 - w / 2;
+        x = int.max (bar.margin_start, int.min (x, root.get_width () - bar.margin_end - w));
+
+        if (card_tick != 0) root.remove_tick_callback (card_tick);
+        card_tick = 0;
+        if (!drawer.reveal_child) {
+            card.margin_start = x;
+            return;
+        }
+        int from = card.margin_start;
+        card_tick = tween (320, true, (e) => {
+            card.margin_start = from + (int) ((x - from) * e);
         });
     }
 
@@ -213,6 +270,7 @@ public class Flowbar : Gtk.Application {
         active = m;
         m.chip.add_css_class ("active");
         m.refresh.begin ();
+        place_card (m);
         panels.visible_child = m.panel;
         drawer.reveal_child = true;
     }

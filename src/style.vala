@@ -3,9 +3,9 @@ const string CSS = """
 window { background: transparent; }
 
 .flow {
-    padding: 0 32px 40px; /* bar sits 10px down via its margin_top */
+    padding-bottom: 40px; /* room for the shadow; the bar's own margins place it */
     font-family: "CommitMono Nerd Font";
-    font-size: 14px;
+    font-size: 15px;
     color: #cdd6f4;
 }
 
@@ -15,20 +15,21 @@ window { background: transparent; }
     box-shadow: 0 14px 36px alpha(black, 0.5), inset 0 1px alpha(white, 0.05);
 }
 
-/* summon: the pill drops in and settles, chips cascade in after it */
+/* summon: the bar drops in and unfolds from the middle out to both corners,
+   then the chips ripple outwards after it (delays are generated per chip) */
 .bar {
-    padding: 5px;
-    border-radius: 20px;
-    transition: opacity 360ms ease-out, transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 6px;
+    border-radius: 22px;
+    transition: opacity 360ms ease-out, transform 640ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .flow.hidden .bar {
     opacity: 0;
-    transform: translateY(-22px) scale(0.9);
+    transform: translateY(-22px) scale(0.35, 0.85);
     transition: opacity 200ms ease-in, transform 240ms ease-in;
 }
 
 .chip {
-    padding: 6px 12px;
+    padding: 7px 14px;
     border-radius: 15px;
     transition: opacity 420ms ease-out, transform 560ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms ease;
 }
@@ -37,17 +38,6 @@ window { background: transparent; }
     transform: translateY(-8px);
     transition: opacity 120ms ease-in, transform 120ms ease-in, background-color 0ms;
 }
-.chip:nth-child(1)  { transition-delay: 60ms,  60ms,  0ms; }
-.chip:nth-child(2)  { transition-delay: 95ms,  95ms,  0ms; }
-.chip:nth-child(3)  { transition-delay: 130ms, 130ms, 0ms; }
-.chip:nth-child(4)  { transition-delay: 165ms, 165ms, 0ms; }
-.chip:nth-child(5)  { transition-delay: 200ms, 200ms, 0ms; }
-.chip:nth-child(6)  { transition-delay: 235ms, 235ms, 0ms; }
-.chip:nth-child(7)  { transition-delay: 270ms, 270ms, 0ms; }
-.chip:nth-child(8)  { transition-delay: 305ms, 305ms, 0ms; }
-.chip:nth-child(9)  { transition-delay: 340ms, 340ms, 0ms; }
-.chip:nth-child(10) { transition-delay: 375ms, 375ms, 0ms; }
-.flow.hidden .chip  { transition-delay: 0ms; }
 
 .chip.active { background: alpha(#cba6f7, 0.16); }
 .chip .key {
