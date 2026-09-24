@@ -53,6 +53,7 @@ public class Flowbar : Gtk.Application {
 
         var card = new Box (Orientation.VERTICAL, 0);
         card.add_css_class ("card");
+        card.halign = Align.CENTER;
         card.append (panels);
         drawer = new Revealer ();
         drawer.transition_type = RevealerTransitionType.SLIDE_DOWN;
