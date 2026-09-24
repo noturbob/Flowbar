@@ -68,3 +68,4 @@ for example:
 
 Style classes: `.flow` (root, `.hidden` while away), `.bar`, `.chip` (`.active`), `.key`,
 `.icon`, `.card`, `.row` (`.cursor`), `.big`, `.sub`, `.dim`, `.status`.
+# Flowbar
