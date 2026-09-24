@@ -25,6 +25,16 @@ class Wifi : Module {
             return;
         }
 
+        // Chip first, from the device state: instant, where a scan can take seconds.
+        value.label = "—";
+        status.label = "Not connected";
+        foreach (var line in (yield sh ("nmcli -t -f TYPE,STATE,CONNECTION device")).split ("\n")) {
+            var d = line.split (":", 3);
+            if (d.length < 3 || d[0] != "wifi" || d[1] != "connected") continue;
+            value.label = d[2];
+            status.label = "Connected to " + d[2];
+        }
+
         // SSID goes last so colons inside it survive the split.
         var out = yield sh ("nmcli -t --escape no -f IN-USE,SIGNAL,SECURITY,SSID device wifi list --rescan auto");
         string[] names = {};
@@ -56,8 +66,6 @@ class Wifi : Module {
         ssids = names;
         secure = locks;
         list.set_rows (rows);
-        value.label = active >= 0 ? ssids[active] : "—";
-        status.label = active >= 0 ? "Connected to " + ssids[active] : "Not connected";
     }
 
     static string bars (int signal) {
