@@ -71,4 +71,15 @@ window { background: transparent; }
 .sub { font-size: 15px; }
 .dim { font-size: 12px; color: alpha(#cdd6f4, 0.5); }
 .accent { color: #cba6f7; }
+
+calendar { background: transparent; border: none; color: #cdd6f4; }
+calendar > header { border: none; padding-bottom: 6px; }
+calendar > header button { background: none; border: none; color: #cba6f7; }
+calendar > grid { padding: 2px; }
+calendar > grid > label { padding: 4px 6px; border-radius: 8px; }
+calendar > grid > label.day-name { color: #cba6f7; font-weight: bold; }
+calendar > grid > label.week-number { color: alpha(#cdd6f4, 0.35); }
+calendar > grid > label.other-month { color: alpha(#cdd6f4, 0.25); }
+calendar > grid > label.today { color: #f5c2e7; font-weight: bold; box-shadow: inset 0 -2px #f5c2e7; }
+calendar > grid > label:selected { background: #cba6f7; color: #11111b; }
 """;
