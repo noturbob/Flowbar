@@ -26,7 +26,7 @@ class Wifi : Module {
         }
 
         // SSID goes last so colons inside it survive the split.
-        var out = yield sh ("nmcli -t --escape no -f IN-USE,SIGNAL,SECURITY,SSID device wifi list --rescan no");
+        var out = yield sh ("nmcli -t --escape no -f IN-USE,SIGNAL,SECURITY,SSID device wifi list --rescan auto");
         string[] names = {};
         string[] locks = {};
         int[] signal = {};
