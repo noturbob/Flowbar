@@ -21,9 +21,7 @@ class Power : Module {
         panel.width_request = 260;
         panel.append (status);
         for (int i = 0; i < KEYS.length; i++) {
-            var row = label ("", "row");
-            row.use_markup = true;
-            row.label = "<b><span foreground='#cba6f7'>%s</span></b>   %s".printf (KEYS[i], NAMES[i]);
+            var row = key_row (KEYS[i], NAMES[i]);
             panel.append (row);
             rows += row;
         }

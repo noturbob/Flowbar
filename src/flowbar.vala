@@ -55,7 +55,7 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
         Module[] left = { new Clock (), new Cal (), new Media () };
-        Module[] center = { new Clip () };
+        Module[] center = { new Clip (), new Shot () };
         Module[] right = { new Wifi (), new Bluetooth (), new Volume (), new Brightness (), new Sys (), new Power () };
 
         bar = new CenterBox ();
@@ -364,6 +364,18 @@ class Picker : Box {
             if (i++ == pos) c.add_css_class ("cursor"); else c.remove_css_class ("cursor");
         }
     }
+}
+
+// "k   name" rows for panels that are a menu of single-key actions.
+Label key_row (string key, string text) {
+    var row = label ("", "row");
+    row.use_markup = true;
+    row.label = keyed (key, text);
+    return row;
+}
+
+string keyed (string key, string text) {
+    return "<b><span foreground='#cba6f7'>%s</span></b>   %s".printf (key, text);
 }
 
 async string sh (string cmd) {
