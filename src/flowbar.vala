@@ -19,6 +19,8 @@ public class Flowbar : Gtk.Application {
     bool shown = false;
     uint tick_id = 0;
     uint hide_id = 0;
+    uint zone_tick = 0;
+    int zone = 0;
     int ticks = 0;
 
     public Flowbar () {
@@ -152,8 +154,26 @@ public class Flowbar : Gtk.Application {
 
     // Claim the bar's strip of the top edge so niri slides every window down to make room,
     // the way it slides columns aside for a new window. Panels still float over the top.
+    // niri snaps windows to a new working area without animating, so we grow the strip a
+    // little every frame, eased like the bar's own drop, and the windows glide with it.
     void reserve (bool on) {
-        GtkLayerShell.set_exclusive_zone (win, on ? bar.margin_top + bar.get_height () + 6 : 0);
+        int from = zone;
+        int to = on ? bar.margin_top + bar.get_height () + 6 : 0;
+        double ms = on ? 520 : 240;
+        int64 start = -1;
+        if (zone_tick != 0) root.remove_tick_callback (zone_tick);
+        zone_tick = root.add_tick_callback ((w, clock) => {
+            int64 now = clock.get_frame_time ();
+            if (start < 0) start = now;
+            double t = ((now - start) / 1000.0 / ms).clamp (0, 1);
+            double u = 1 - t;
+            double eased = on ? 1 - u * u * u * u : t * t; // settle in on show, fall away on hide
+            int z = from + (int) ((to - from) * eased);
+            if (z != zone) GtkLayerShell.set_exclusive_zone (win, zone = z);
+            if (t < 1) return Source.CONTINUE;
+            zone_tick = 0;
+            return Source.REMOVE;
+        });
     }
 
     // Modules only poll while the bar is visible.
