@@ -36,7 +36,7 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.TOP, true);
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
-        modules = { new Clock (), new Cal (), new Wifi (), new Bluetooth (), new Volume () };
+        modules = { new Clock (), new Cal (), new Wifi (), new Bluetooth (), new Volume (), new Brightness () };
 
         var bar = new Box (Orientation.HORIZONTAL, 2);
         bar.add_css_class ("bar");
