@@ -519,12 +519,15 @@ void launch (string cmd) {
     }
 }
 
+// A file's contents, or "" if it can't be read.
 string slurp (string path) {
-    string s = "";
     try {
+        string s;
         FileUtils.get_contents (path, out s);
-    } catch (Error e) {}
-    return s.strip ();
+        return s.strip ();
+    } catch (Error e) {
+        return ""; // get_contents nulls its out param on failure
+    }
 }
 
 Label label (string text, string? css = null) {
