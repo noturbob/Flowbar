@@ -36,7 +36,7 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.TOP, true);
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
-        modules = { new Clock (), new Cal (), new Wifi (), new Bluetooth () };
+        modules = { new Clock (), new Cal (), new Wifi (), new Bluetooth (), new Volume () };
 
         var bar = new Box (Orientation.HORIZONTAL, 2);
         bar.add_css_class ("bar");
@@ -194,6 +194,12 @@ public abstract class Module {
     }
 
     public abstract async void refresh ();
+
+    // Run a command, then show its effect straight away.
+    protected async void act (string cmd) {
+        yield sh (cmd);
+        yield refresh ();
+    }
 
     // Keys while this module's panel is open. Return true if consumed.
     public virtual bool on_key (string k) {

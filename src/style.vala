@@ -76,6 +76,12 @@ window { background: transparent; }
 .row.cursor { background: alpha(#cba6f7, 0.18); }
 .status { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
 
+levelbar trough { background: alpha(#cdd6f4, 0.08); border: none; border-radius: 99px; min-height: 8px; }
+levelbar block { border: none; border-radius: 99px; min-height: 8px; }
+levelbar block.filled, levelbar block.low, levelbar block.high, levelbar block.full { background: #cba6f7; }
+levelbar block.empty { background: transparent; }
+levelbar.muted block.filled { background: alpha(#cdd6f4, 0.25); }
+
 calendar { background: transparent; border: none; color: #cdd6f4; }
 calendar > header { border: none; padding-bottom: 6px; }
 calendar > header button { background: none; border: none; color: #cba6f7; }
