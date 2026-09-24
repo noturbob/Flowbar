@@ -70,6 +70,14 @@ XF86MonBrightnessDown allow-when-locked=true { spawn-sh "brightnessctl --class=b
 
 Any module can be peeked. If the bar is already open, the chip itself updates instead.
 
+### Straight to a panel
+
+`flowbar --open <module>` summons the bar with that panel already open. It makes the launcher a drop-in for your app launcher bind:
+
+```kdl
+Mod+D hotkey-overlay-title="Launch an app" { spawn "flowbar" "--open" "launcher"; }
+```
+
 <details>
 <summary><b>Tools flowbar talks to</b></summary>
 <br>
@@ -107,6 +115,7 @@ Summon with <kbd>Super</kbd>+<kbd>/</kbd>. Every chip on the bar shows its key: 
 | <kbd>c</kbd> | calendar | <kbd>h</kbd>/<kbd>l</kbd> day · <kbd>j</kbd>/<kbd>k</kbd> week · <kbd>H</kbd>/<kbd>L</kbd> month · <kbd>g</kbd> today |
 | <kbd>m</kbd> | media | <kbd>space</kbd> play/pause · <kbd>h</kbd>/<kbd>l</kbd> previous/next |
 | | **center** | |
+| <kbd>␣</kbd> | launcher | type to search apps · <kbd>↑</kbd>/<kbd>↓</kbd> pick · <kbd>Enter</kbd> launch |
 | <kbd>y</kbd> | clipboard | <kbd>j</kbd>/<kbd>k</kbd> pick · <kbd>Enter</kbd> copy · <kbd>x</kbd> delete · <kbd>X</kbd> clear |
 | <kbd>g</kbd> | screenshot | <kbd>a</kbd> area · <kbd>s</kbd> screen · <kbd>w</kbd> window · <kbd>o</kbd> open folder |
 | <kbd>a</kbd> | notifications | on screen, then history · <kbd>Enter</kbd> act · <kbd>x</kbd> dismiss · <kbd>X</kbd> all · <kbd>r</kbd> bring back last · <kbd>f</kbd> do not disturb |
@@ -120,7 +129,7 @@ Summon with <kbd>Super</kbd>+<kbd>/</kbd>. Every chip on the bar shows its key: 
 | <kbd>s</kbd> | system | CPU, memory, temperature, battery |
 | <kbd>p</kbd> | power | <kbd>l</kbd> lock · <kbd>s</kbd> suspend · <kbd>e</kbd> log out · <kbd>r</kbd> reboot · <kbd>o</kbd> power off, each pressed **twice** |
 
-An open panel gets first pick of the keyboard, so letters can mean something local there (<kbd>s</kbd> is suspend inside power, not system).
+An open panel gets first pick of the keyboard, so letters can mean something local there (<kbd>s</kbd> is suspend inside power, not system). The launcher takes that furthest: while it's open, everything you type goes into the search.
 
 <br>
 
@@ -137,7 +146,7 @@ radius = 22
 
 [bar]
 left   = workspaces time calendar media
-center = clipboard screenshot notifications night updates
+center = launcher clipboard screenshot notifications night updates
 right  = wifi bluetooth volume display system power
 margin = auto             # niri's layout `gaps`: the bar sits as far from the edges as your windows do
 height = 24               # the size of a stock waybar

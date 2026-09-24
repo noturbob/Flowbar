@@ -44,13 +44,16 @@ public class Flowbar : Gtk.Application {
         var args = cmd.get_arguments ();
         bool daemon = false;
         string? glance_at = null;
+        string? open_at = null;
         for (int i = 1; i < args.length; i++) {
             if (args[i] == "--daemon") {
                 daemon = true;
             } else if (args[i] == "--peek" && i + 1 < args.length) {
                 glance_at = args[++i];
+            } else if (args[i] == "--open" && i + 1 < args.length) {
+                open_at = args[++i];
             } else {
-                cmd.printerr ("usage: flowbar [--daemon] [--peek MODULE]\n");
+                cmd.printerr ("usage: flowbar [--daemon] [--peek MODULE] [--open MODULE]\n");
                 return 1;
             }
         }
@@ -69,6 +72,13 @@ public class Flowbar : Gtk.Application {
         }
         if (glance_at != null) {
             glance.begin (glance_at);
+        } else if (open_at != null) {
+            // Straight to one panel, e.g. a bind for the launcher.
+            foreach (var m in modules) {
+                if (m.name != open_at) continue;
+                if (!shown) show_bar ();
+                if (active != m) open_panel (m);
+            }
         } else if (!daemon) {
             if (shown) hide_bar (); else show_bar ();
         }
@@ -125,7 +135,7 @@ public class Flowbar : Gtk.Application {
         bar.add_css_class ("bar");
         bar.margin_top = bar.margin_start = bar.margin_end = Config.gap ();
         bar.start_widget = section ("left", "workspaces time calendar media");
-        bar.center_widget = section ("center", "clipboard screenshot notifications night updates");
+        bar.center_widget = section ("center", "launcher clipboard screenshot notifications night updates");
         bar.end_widget = section ("right", "wifi bluetooth volume display system power");
 
         panels = new Stack ();
@@ -177,6 +187,7 @@ public class Flowbar : Gtk.Application {
     static Module? make_module (string name) {
         switch (name) {
         case "workspaces": return new Workspaces ();
+        case "launcher": return new Launcher ();
         case "time": return new Clock ();
         case "calendar": return new Cal ();
         case "media": return new Media ();
@@ -403,6 +414,18 @@ public class Flowbar : Gtk.Application {
 
     bool on_key (uint keyval, uint keycode, Gdk.ModifierType state) {
         string k = Gdk.keyval_name (keyval) ?? "";
+
+        // A panel that takes text (the launcher) gets typed characters, not module keys.
+        if (active != null && active.typing && k != "Escape") {
+            unichar c = Gdk.keyval_to_unicode (keyval);
+            bool plain = (state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK)) == 0;
+            if (c >= 32 && c != 127 && plain) {
+                active.on_text (c);
+                return true;
+            }
+            return active.on_key (k == "KP_Enter" ? "Return" : k);
+        }
+
         switch (k) {
         case "Left": k = "h"; break;
         case "Down": k = "j"; break;
@@ -454,10 +477,11 @@ public abstract class Module {
     public Label value = new Label ("");
     public Box panel = new Box (Orientation.VERTICAL, 6);
     public int every = 1; // refresh interval in seconds while visible
+    public bool typing = false; // takes typed text while its panel is open (see on_text)
 
     protected Module (string key, string icon) {
         this.key = key;
-        key_label = label (key.up (), "key");
+        key_label = label (badge (key), "key");
         icon_label = label (icon, "icon");
         chip.add_css_class ("chip");
         chip.append (key_label);
@@ -479,8 +503,16 @@ public abstract class Module {
     // Keys are Gdk key names: a letter, or e.g. F1, comma, slash.
     public void rekey (string k) {
         key = k;
-        key_label.label = k.char_count () == 1 ? k.up () : k;
+        key_label.label = badge (k);
     }
+
+    static string badge (string k) {
+        if (k == "space") return "␣";
+        return k.char_count () == 1 ? k.up () : k;
+    }
+
+    // Typed characters, for modules with typing = true.
+    public virtual void on_text (unichar c) {}
 
     // 0-100 for modules that have a level (volume, brightness), shown by --peek; -1 if not.
     public virtual double level () {
