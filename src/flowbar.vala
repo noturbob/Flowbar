@@ -269,6 +269,7 @@ public class Flowbar : Gtk.Application {
         if (active != null) active.chip.remove_css_class ("active");
         active = m;
         m.chip.add_css_class ("active");
+        m.opened ();
         m.refresh.begin ();
         place_card (m);
         panels.visible_child = m.panel;
@@ -310,6 +311,9 @@ public abstract class Module {
         yield refresh ();
     }
 
+    // Called as the panel opens, before its refresh.
+    public virtual void opened () {}
+
     // Keys while this module's panel is open. Return true if consumed.
     public virtual bool on_key (string k) {
         return false;
@@ -325,6 +329,7 @@ void dismiss () {
 class Picker : Box {
     public int pos = 0;
     public int count = 0;
+    public bool moved = false; // the user has moved the cursor since the panel last reset it
 
     public Picker () {
         Object (orientation: Orientation.VERTICAL, spacing: 2);
@@ -348,6 +353,7 @@ class Picker : Box {
     public bool move (string k) {
         if (count == 0 || (k != "j" && k != "k")) return false;
         pos = (pos + (k == "j" ? 1 : -1) + count) % count;
+        moved = true;
         paint ();
         return true;
     }
