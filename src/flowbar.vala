@@ -55,7 +55,7 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
         Module[] left = { new Clock (), new Cal (), new Media () };
-        Module[] center = { new Clip (), new Shot () };
+        Module[] center = { new Clip (), new Shot (), new Night () };
         Module[] right = { new Wifi (), new Bluetooth (), new Volume (), new Brightness (), new Sys (), new Power () };
 
         bar = new CenterBox ();
