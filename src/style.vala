@@ -3,7 +3,7 @@ const string CSS = """
 window { background: transparent; }
 
 .flow {
-    padding: 10px 32px 40px;
+    padding: 0 32px 40px; /* bar sits 10px down via its margin_top */
     font-family: "CommitMono Nerd Font";
     font-size: 14px;
     color: #cdd6f4;

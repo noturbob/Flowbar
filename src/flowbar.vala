@@ -9,6 +9,7 @@ using Gtk;
 public class Flowbar : Gtk.Application {
     Window win;
     Box root;
+    Box bar;
     Revealer drawer;
     Stack panels;
     Module[] modules;
@@ -38,9 +39,10 @@ public class Flowbar : Gtk.Application {
 
         modules = { new Clock (), new Cal (), new Wifi (), new Bluetooth (), new Volume (), new Brightness (), new Media (), new Sys (), new Power () };
 
-        var bar = new Box (Orientation.HORIZONTAL, 2);
+        bar = new Box (Orientation.HORIZONTAL, 2);
         bar.add_css_class ("bar");
         bar.halign = Align.CENTER;
+        bar.margin_top = 10;
         panels = new Stack ();
         panels.transition_type = StackTransitionType.CROSSFADE;
         panels.transition_duration = 220;
@@ -103,6 +105,7 @@ public class Flowbar : Gtk.Application {
         root.add_tick_callback (() => {
             if (++frames < 2) return Source.CONTINUE;
             root.remove_css_class ("hidden");
+            reserve (true);
             return Source.REMOVE;
         });
         tick_id = Timeout.add_seconds (1, () => {
@@ -115,6 +118,7 @@ public class Flowbar : Gtk.Application {
         shown = false;
         close_panel ();
         root.add_css_class ("hidden");
+        reserve (false);
         if (tick_id != 0) {
             Source.remove (tick_id);
             tick_id = 0;
@@ -124,6 +128,12 @@ public class Flowbar : Gtk.Application {
             hide_id = 0;
             return Source.REMOVE;
         });
+    }
+
+    // Claim the bar's strip of the top edge so niri slides every window down to make room,
+    // the way it slides columns aside for a new window. Panels still float over the top.
+    void reserve (bool on) {
+        GtkLayerShell.set_exclusive_zone (win, on ? bar.margin_top + bar.get_height () + 6 : 0);
     }
 
     // Modules only poll while the bar is visible.
