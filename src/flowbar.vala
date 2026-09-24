@@ -36,7 +36,7 @@ public class Flowbar : Gtk.Application {
         GtkLayerShell.set_anchor (win, GtkLayerShell.Edge.TOP, true);
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
 
-        modules = { new Clock (), new Cal () };
+        modules = { new Clock (), new Cal (), new Wifi () };
 
         var bar = new Box (Orientation.HORIZONTAL, 2);
         bar.add_css_class ("bar");
@@ -110,7 +110,7 @@ public class Flowbar : Gtk.Application {
         });
     }
 
-    void hide_bar () {
+    public void hide_bar () {
         shown = false;
         close_panel ();
         root.add_css_class ("hidden");
@@ -187,6 +187,8 @@ public abstract class Module {
         chip.add_css_class ("chip");
         chip.append (label (key.up (), "key"));
         chip.append (label (icon, "icon"));
+        value.max_width_chars = 16;
+        value.ellipsize = Pango.EllipsizeMode.END;
         chip.append (value);
         panel.add_css_class ("panel");
     }
@@ -196,6 +198,50 @@ public abstract class Module {
     // Keys while this module's panel is open. Return true if consumed.
     public virtual bool on_key (string k) {
         return false;
+    }
+}
+
+// For actions that hand off to another window (a terminal, a lock screen).
+void dismiss () {
+    ((Flowbar) GLib.Application.get_default ()).hide_bar ();
+}
+
+// A vertical list with a keyboard cursor; the wifi and bluetooth panels use it.
+class Picker : Box {
+    public int pos = 0;
+    public int count = 0;
+
+    public Picker () {
+        Object (orientation: Orientation.VERTICAL, spacing: 2);
+    }
+
+    public void set_rows (string[] markup) {
+        Widget? c;
+        while ((c = get_first_child ()) != null) remove (c);
+        foreach (var m in markup) {
+            var l = label ("", "row");
+            l.use_markup = true;
+            l.label = m;
+            append (l);
+        }
+        count = markup.length;
+        pos = pos.clamp (0, int.max (count - 1, 0));
+        paint ();
+    }
+
+    // j/k move the cursor.
+    public bool move (string k) {
+        if (count == 0 || (k != "j" && k != "k")) return false;
+        pos = (pos + (k == "j" ? 1 : -1) + count) % count;
+        paint ();
+        return true;
+    }
+
+    void paint () {
+        int i = 0;
+        for (var c = get_first_child (); c != null; c = c.get_next_sibling ()) {
+            if (i++ == pos) c.add_css_class ("cursor"); else c.remove_css_class ("cursor");
+        }
     }
 }
 

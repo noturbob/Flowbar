@@ -10,7 +10,7 @@ window { background: transparent; }
 }
 
 .bar, .card {
-    background: alpha(#11111b, 0.88);
+    background: alpha(#11111b, 0.94);
     border: 1px solid alpha(#cdd6f4, 0.08);
     box-shadow: 0 14px 36px alpha(black, 0.5), inset 0 1px alpha(white, 0.05);
 }
@@ -71,6 +71,10 @@ window { background: transparent; }
 .sub { font-size: 15px; }
 .dim { font-size: 12px; color: alpha(#cdd6f4, 0.5); }
 .accent { color: #cba6f7; }
+
+.row { padding: 5px 10px; border-radius: 10px; }
+.row.cursor { background: alpha(#cba6f7, 0.18); }
+.status { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
 
 calendar { background: transparent; border: none; color: #cdd6f4; }
 calendar > header { border: none; padding-bottom: 6px; }
