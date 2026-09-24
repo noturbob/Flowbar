@@ -320,7 +320,9 @@ public class Flowbar : Gtk.Application {
         card.measure (Orientation.HORIZONTAL, -1, out a, out card_w, out a, out b);
         panels.measure (Orientation.HORIZONTAL, -1, out a, out stack_w, out a, out b);
         m.panel.measure (Orientation.HORIZONTAL, -1, out a, out panel_w, out a, out b);
-        int w = panel_w + card_w - stack_w; // the panel plus the card's padding and border
+        // The panel plus the card's padding and border. measure() counts margins too, and the
+        // card's margin is its current x, so take that back out.
+        int w = panel_w + card_w - card.margin_start - card.margin_end - stack_w;
         int x = bar.margin_start + (int) p.x + m.chip.get_width () / 2 - w / 2;
         x = int.max (bar.margin_start, int.min (x, root.get_width () - bar.margin_end - w));
 
