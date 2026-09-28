@@ -35,10 +35,24 @@ public class Flowbar : Gtk.Application {
     CssProvider? css_user = null;
     int zone = 0;
     int ticks = 0;
+    public bool igpu = false; // see prefer_igpu()
 
     public Flowbar () {
         // Every `flowbar` run hands its arguments to the one already running.
         Object (application_id: "io.github.noturbob.flowbar", flags: ApplicationFlags.HANDLES_COMMAND_LINE);
+    }
+
+    public override void startup () {
+        base.startup ();
+        if (!igpu) return;
+        // GL is set up now, on the iGPU; apps launched from the bar should pick their own GPU.
+        try {
+            Gdk.Display.get_default ().prepare_gl ();
+        } catch (Error e) {
+            warning ("GL: %s", e.message);
+        }
+        Environment.unset_variable ("__EGL_VENDOR_LIBRARY_FILENAMES");
+        Environment.unset_variable ("GDK_DISABLE");
     }
 
     public override int command_line (ApplicationCommandLine cmd) {
@@ -746,6 +760,35 @@ Label label (string text, string? css = null) {
     return l;
 }
 
+// On a hybrid-GPU laptop GTK renders on the NVIDIA card, which powers down when idle and
+// takes ~2s to wake: that was a pause before the bar appeared after a while unused. Draw on
+// the integrated GPU instead, over GL (the Vulkan loader would pick NVIDIA again).
+// Returns whether it set anything, so startup() can clear it for the apps we launch.
+bool prefer_igpu () {
+    const string MESA = "/usr/share/glvnd/egl_vendor.d/50_mesa.json";
+    if (Environment.get_variable ("__EGL_VENDOR_LIBRARY_FILENAMES") != null) return false;
+    if (Environment.get_variable ("GDK_DISABLE") != null) return false;
+    if (!FileUtils.test (MESA, FileTest.EXISTS)) return false;
+    bool nvidia = false, other = false;
+    try {
+        var drm = Dir.open ("/sys/class/drm");
+        string? n;
+        while ((n = drm.read_name ()) != null) {
+            if (!n.has_prefix ("renderD")) continue;
+            var driver = FileUtils.read_link ("/sys/class/drm/%s/device/driver".printf (n));
+            if (Path.get_basename (driver) == "nvidia") nvidia = true; else other = true;
+        }
+    } catch (Error e) {
+        return false;
+    }
+    if (!nvidia || !other) return false;
+    Environment.set_variable ("__EGL_VENDOR_LIBRARY_FILENAMES", MESA, true);
+    Environment.set_variable ("GDK_DISABLE", "vulkan", true);
+    return true;
+}
+
 int main (string[] args) {
-    return new Flowbar ().run (args);
+    var app = new Flowbar ();
+    app.igpu = prefer_igpu ();
+    return app.run (args);
 }
