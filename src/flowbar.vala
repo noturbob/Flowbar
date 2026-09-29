@@ -81,6 +81,12 @@ public class Flowbar : Gtk.Application {
             if (daemon) {
                 prewarm ();
                 peek.prewarm ();
+                // One quiet refresh so the first summon already has everything, updates too
+                // (it hits the network, so wait until that's likely up after login).
+                Timeout.add_seconds (20, () => {
+                    if (!shown) refresh (true);
+                    return Source.REMOVE;
+                });
             }
         } else if (daemon) {
             return 0; // already running
@@ -294,9 +300,11 @@ public class Flowbar : Gtk.Application {
     // map once fully transparent, without grabbing the keyboard, and unmap on the first frame.
     void prewarm () {
         GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.NONE);
+        if (mouse ()) catch_clicks ().present ();
         win.present ();
         root.add_tick_callback (() => {
             win.visible = false;
+            if (catcher != null) catcher.visible = false;
             GtkLayerShell.set_keyboard_mode (win, GtkLayerShell.KeyboardMode.EXCLUSIVE);
             return Source.REMOVE;
         });
@@ -750,6 +758,17 @@ string slurp (string path) {
         return s.strip ();
     } catch (Error e) {
         return ""; // get_contents nulls its out param on failure
+    }
+}
+
+// slurp, but read on a worker thread, for files that are slow to read.
+async string slurp_async (string path) {
+    try {
+        uint8[] data;
+        yield File.new_for_path (path).load_contents_async (null, out data, null);
+        return ((string) data).strip (); // load_contents always nul-terminates
+    } catch (Error e) {
+        return "";
     }
 }
 

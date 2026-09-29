@@ -72,8 +72,9 @@ class Sys : Module {
             set_row (3, 0, "—");
             return;
         }
-        int cap = int.parse (slurp (battery + "/capacity"));
-        var status = slurp (battery + "/status");
+        // Off the main thread: reading a laptop battery's status can take 100ms+ (ACPI).
+        int cap = int.parse (yield slurp_async (battery + "/capacity"));
+        var status = yield slurp_async (battery + "/status");
         value.label = (status == "Charging" ? " " : "") + "%d%%".printf (cap);
         set_row (3, cap, "%d%% %s".printf (cap, status.down ()));
     }
