@@ -106,7 +106,7 @@ class Workspaces : Module {
         if (!list.moved) list.pos = focused_row;
         list.set_rows (rows);
 
-        chip.append (Markup.escape_text (clip (title, 18)));
+        chip.append (Markup.escape_text (clip (title, 60))); // the chip scrolls what doesn't fit
         value.label = chip.str.strip ();
         status.label = "Workspace %d · %d window%s".printf (focused_ws, rows.length, rows.length == 1 ? "" : "s");
     }

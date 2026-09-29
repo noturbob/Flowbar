@@ -548,7 +548,7 @@ public abstract class Module {
     public Label key_label;
     public Label icon_label;
     public Box chip = new Box (Orientation.HORIZONTAL, 7);
-    public Label value = new Label ("");
+    public Marquee value = new Marquee ();
     public Box panel = new Box (Orientation.VERTICAL, 6);
     public int every = 1; // refresh interval in seconds while visible
     public bool typing = false; // takes typed text while its panel is open (see on_text)
@@ -560,8 +560,7 @@ public abstract class Module {
         chip.add_css_class ("chip");
         chip.append (key_label);
         chip.append (icon_label);
-        value.max_width_chars = 14; // fifteen chips have to share one screen width
-        value.ellipsize = Pango.EllipsizeMode.END;
+        value.max_width_chars = 14; // fifteen chips have to share one screen width; longer text scrolls
         chip.append (value);
         panel.add_css_class ("panel");
     }

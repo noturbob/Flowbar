@@ -258,6 +258,7 @@ A few details, for the curious:
 - **Windows that make room.** When the bar appears it reserves a strip at the top edge, and niri moves your windows out of it. The strip is claimed in one step the moment you press the key, not grown with the bar: every change to it resizes every window, and apps re-flow their text a beat after the last resize, so a strip that grew frame by frame left terminals visibly settling after the bar had landed. In one step they finish re-flowing while the bar is still sliding in on niri's default spring.
 - **Your spacing, not ours.** The gap around the bar comes from niri's own `gaps`, so it lines up exactly with your window edges.
 - **One instance.** flowbar is a single-instance GTK application: running `flowbar` again just toggles the one that's already there, which is why a bind can be a plain `spawn "flowbar"`.
+- **Text that fits.** A chip is at most fourteen characters wide. A longer window title, song or clipboard entry scrolls to show its end and back, and only while the bar is on screen.
 - **Quiet when hidden.** Modules only poll while the bar is on screen, and slow checks (package updates) are cached.
 - **Clipboard without a daemon.** History comes from `wl-paste --watch` and stays in memory. Copies a password manager marks as sensitive are never recorded.
 
