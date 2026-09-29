@@ -70,10 +70,14 @@ class Workspaces : Module {
         var chip = new StringBuilder ();
         string title = "";
         int focused_ws = 0;
+        // The focused workspace's active window. Not the window's is_focused: that goes false
+        // as soon as the bar takes the keyboard, and the title would vanish from the chip.
+        int64 active = -1;
         foreach (var w in ws) {
             int idx = (int) w.get_int_member ("idx");
             if (w.get_boolean_member ("is_focused")) {
                 focused_ws = idx;
+                if (!w.get_null_member ("active_window_id")) active = w.get_int_member ("active_window_id");
                 chip.append ("<span foreground='%s'><b>%d</b></span> ".printf (accent, idx));
             } else {
                 chip.append ("<span alpha='45%%'>%d</span> ".printf (idx));
@@ -87,7 +91,7 @@ class Workspaces : Module {
             var t = w.get_string_member_with_default ("title", "");
             var app = w.get_string_member_with_default ("app_id", "");
             int idx = (int) idx_of (ws, w.get_int_member ("workspace_id"));
-            bool focused = w.get_boolean_member ("is_focused");
+            bool focused = w.get_int_member ("id") == active;
             if (focused) {
                 focused_row = rows.length;
                 title = t;
