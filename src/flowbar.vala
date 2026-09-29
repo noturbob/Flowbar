@@ -17,7 +17,7 @@ public class Flowbar : Gtk.Application {
     Window? catcher = null; // full-screen and invisible behind the bar: a click on it closes the bar
     Peek peek;
     Module[] loose = {}; // modules made just for peeks, when they aren't on the bar
-    Box root;
+    Lifted root;
     CenterBox bar;
     Box card;
     Revealer drawer;
@@ -26,14 +26,14 @@ public class Flowbar : Gtk.Application {
     Module? active = null;
     bool shown = false;
     uint tick_id = 0;
-    uint hide_id = 0;
-    uint zone_tick = 0;
+    uint slide_tick = 0;
     uint card_tick = 0;
     uint reload_id = 0;
     FileMonitor monitor;
     CssProvider? css_main = null;
     CssProvider? css_user = null;
     int zone = 0;
+    double pos = 0; // 0 hidden, 1 fully slid in
     int ticks = 0;
     public bool igpu = false; // see prefer_igpu()
 
@@ -177,9 +177,9 @@ public class Flowbar : Gtk.Application {
         drawer.transition_duration = (uint) Config.ms (320);
         drawer.child = card;
 
-        root = new Box (Orientation.VERTICAL, 0);
+        root = new Lifted ();
         root.add_css_class ("flow");
-        if (!shown) root.add_css_class ("hidden"); // a reload while open restyles in place
+        if (!shown) root.lift = 10000; // off the top edge until it slides in
         root.append (bar);
         root.append (drawer);
         win.child = root;
@@ -290,7 +290,7 @@ public class Flowbar : Gtk.Application {
         build ();
         if (shown) {
             refresh (true);
-            reserve (true); // windows only move if the bar's height or margin changed
+            slide (true); // windows only move if the bar's height or margin changed
             tick ();
         }
         message ("reloaded %s", Config.dir ());
@@ -317,14 +317,6 @@ public class Flowbar : Gtk.Application {
 
         var sb = new StringBuilder (Theme.css_vars ());
         sb.append (CSS);
-        // Chips cascade in from the middle of the bar outwards to both corners.
-        double mid = (modules.length - 1) / 2.0;
-        for (int i = 0; i < modules.length; i++) {
-            modules[i].chip.add_css_class ("n%d".printf (i));
-            int ms = (int) Config.ms (90 + (i - mid).abs () * 40);
-            sb.append (".chip.n%d { transition-delay: %dms, %dms, 0ms; }\n".printf (i, ms, ms));
-        }
-        sb.append (".flow.hidden .chip { transition-delay: 0ms; }\n");
         css_main = provider ("flowbar", display, STYLE_PROVIDER_PRIORITY_APPLICATION);
         css_main.load_from_string (sb.str);
 
@@ -347,15 +339,11 @@ public class Flowbar : Gtk.Application {
     }
 
     void show_bar () {
-        if (hide_id != 0) {
-            Source.remove (hide_id);
-            hide_id = 0;
-        }
         shown = true;
         refresh (true);
         if (mouse ()) catch_clicks ().present (); // under the bar, so it goes first
         win.present ();
-        reveal ();
+        slide (true);
         tick ();
     }
 
@@ -381,17 +369,6 @@ public class Flowbar : Gtk.Application {
         return catcher;
     }
 
-    // Drop .hidden only once the hidden style has been painted, so the CSS transitions run.
-    void reveal () {
-        int frames = 0;
-        root.add_tick_callback (() => {
-            if (++frames < 2) return Source.CONTINUE;
-            root.remove_css_class ("hidden");
-            reserve (true);
-            return Source.REMOVE;
-        });
-    }
-
     void tick () {
         tick_id = Timeout.add_seconds (1, () => {
             refresh (false);
@@ -403,41 +380,42 @@ public class Flowbar : Gtk.Application {
         shown = false;
         if (catcher != null) catcher.visible = false;
         close_panel ();
-        root.add_css_class ("hidden");
-        reserve (false);
+        slide (false);
         if (tick_id != 0) {
             Source.remove (tick_id);
             tick_id = 0;
         }
-        hide_id = Timeout.add ((uint) Config.ms (280), () => {
-            win.visible = false;
-            hide_id = 0;
-            return Source.REMOVE;
-        });
     }
 
-    // Claim the bar's strip of the top edge so niri slides every window down to make room,
-    // the way it slides columns aside for a new window. Panels still float over the top.
-    // niri snaps windows to a new working area without animating, so we grow the strip a
-    // little every frame, eased like the bar's own drop, and the windows glide with it.
-    void reserve (bool on) {
-        if (!Config.flag ("bar", "push-windows", true)) return;
-        int from = zone;
+    // Slide the bar down out of the top edge, or back up into it, and claim its strip of that
+    // edge so niri moves every window down to make room (panels still float over the top).
+    // The strip changes once, right away, not a little every frame: every change resizes every
+    // window, and apps re-flow their text a beat after the last resize (kitty waits up to
+    // 0.5s), so a strip that grew with the bar left the text settling after the bar had landed.
+    // In one step the windows re-flow while the bar is still sliding.
+    void slide (bool on) {
         // Just the bar's footprint: niri adds its own `gaps` between this strip and the windows.
         // measure() counts the top margin and the CSS border; get_height() leaves the border out.
         int a, b, footprint;
         bar.measure (Orientation.VERTICAL, -1, out a, out footprint, out a, out b);
-        int to = on ? footprint : 0;
-        if (zone_tick != 0) win.remove_tick_callback (zone_tick);
-        // settle in on show, fall away on hide
-        zone_tick = tween (Config.ms (on ? 520 : 240), on, (e) => {
-            int z = from + (int) ((to - from) * e);
-            if (z != zone) GtkLayerShell.set_exclusive_zone (win, zone = z);
+        int z = on && Config.flag ("bar", "push-windows", true) ? footprint : 0;
+        if (z != zone) GtkLayerShell.set_exclusive_zone (win, zone = z);
+        double from = pos, to = on ? 1 : 0;
+        if (slide_tick != 0) win.remove_tick_callback (slide_tick);
+        slide_tick = spring ((e) => {
+            pos = from + (to - from) * e;
+            root.lift = (1 - pos) * footprint;
+            root.queue_draw ();
+            if (e == 1 && !on) win.visible = false;
         });
     }
 
-    // Call step with 0..1 eased progress every frame for ms; ease-out or ease-in.
-    uint tween (double ms, bool ease_out, owned Step step) {
+    // Call step with 0..1 progress every frame, on niri's default spring (damping-ratio 1,
+    // stiffness 800): x = 1 - (1 + wt)e^(-wt), w = sqrt(800). The same curve both ways.
+    // It's within niri's epsilon (0.0001) at wt = 11.8, about 420ms before [motion] speed.
+    uint spring (owned Step step) {
+        double settled = 11.8;
+        double ms = Config.ms (settled / Math.sqrt (800) * 1000);
         if (ms <= 0) {
             step (1); // [motion] speed = 0: no animation
             return 0;
@@ -446,16 +424,19 @@ public class Flowbar : Gtk.Application {
         return win.add_tick_callback ((w, clock) => {
             int64 now = clock.get_frame_time ();
             if (start < 0) start = now;
-            double t = ((now - start) / 1000.0 / ms).clamp (0, 1);
-            double u = 1 - t;
-            step (ease_out ? 1 - u * u * u * u : t * t);
-            return t < 1 ? Source.CONTINUE : Source.REMOVE;
+            double wt = (now - start) / 1000.0 / ms * settled;
+            if (wt >= settled) {
+                step (1);
+                return Source.REMOVE;
+            }
+            step (1 - (1 + wt) * Math.exp (-wt));
+            return Source.CONTINUE;
         });
     }
 
     // Center the card under its chip, kept on screen. Glide there if a card is already open.
     void place_card (Module m) {
-        // Measure against the bar, not the screen: the bar is scaled while it unfolds.
+        // Measure against the bar, not the screen: the bar is shifted while it slides.
         Graphene.Point origin = { 0, 0 };
         Graphene.Point p;
         m.chip.compute_point (bar, origin, out p);
@@ -476,7 +457,7 @@ public class Flowbar : Gtk.Application {
             return;
         }
         int from = card.margin_start;
-        card_tick = tween (Config.ms (320), true, (e) => {
+        card_tick = spring ((e) => {
             card.margin_start = from + (int) ((x - from) * e);
         });
     }
@@ -541,6 +522,22 @@ public class Flowbar : Gtk.Application {
         active.chip.remove_css_class ("active");
         active = null;
         drawer.reveal_child = false;
+    }
+}
+
+// The bar and its panel, drawn lift px higher than laid out: how the bar slides in and out
+// of the top edge (a layer surface can't move itself).
+class Lifted : Box {
+    public double lift = 0;
+
+    public Lifted () {
+        Object (orientation: Orientation.VERTICAL, spacing: 0);
+    }
+
+    public override void snapshot (Snapshot s) {
+        Graphene.Point p = { 0, (float) (-lift) };
+        s.translate (p);
+        base.snapshot (s);
     }
 }
 

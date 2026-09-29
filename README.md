@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="docs/demo.webp" alt="flowbar: Super+/ unfolds a full-width bar while the windows slide down to make room; c, v and s open the calendar, volume and system panels under their chips; saving config.ini restyles the bar live through four themes; Esc sends it away." width="100%">
+<img src="docs/demo.webp" alt="flowbar: Super+/ slides a full-width bar down while the windows slide down to make room; c, v and s open the calendar, volume and system panels under their chips; saving config.ini restyles the bar live through four themes; Esc sends it away." width="100%">
 
 # flowbar
 
 **A bar that isn't there, until you ask for it.**
 
-Your windows get the whole screen. Press <kbd>Super</kbd>&nbsp;+&nbsp;<kbd>/</kbd> and a bar unfolds across the top,<br>
-your windows glide down to make room, and every panel is a single key away.<br>
+Your windows get the whole screen. Press <kbd>Super</kbd>&nbsp;+&nbsp;<kbd>/</kbd> and a bar slides down from the top,<br>
+your windows step down to make room, and every panel is a single key away.<br>
 Press it again and the screen is yours.
 
 [![niri](https://img.shields.io/badge/niri-scrollable_tiling-00A2E8?style=flat-square)](https://github.com/YaLTeR/niri)
@@ -26,7 +26,7 @@ Most bars rent a strip of your screen forever to show you the time. flowbar only
 
 - **Out of the way.** Hidden, it takes no pixels and polls nothing.
 - **One key, then one letter.** <kbd>Super</kbd>+<kbd>/</kbd> to summon, a letter for each panel, <kbd>Esc</kbd> to back out.
-- **Moves like niri.** Windows slide down to make room and slide back up when it leaves, eased like the bar itself.
+- **Moves like niri.** The bar slides down on niri's own spring and back up the same way when it leaves, and your windows step down to make room.
 - **One file.** Theme, layout, keys, icons and commands all live in one `config.ini`, and saving it restyles the open bar on the spot.
 - **Mouse welcome.** Every chip, row and toggle is clickable too, and clicking outside closes it.
 - **Made to be riced.** Six themes, every color overridable, CSS variables for your own stylesheet, and any shell command can become a module.
@@ -158,7 +158,7 @@ mouse = true              # clicks and scrolling; false for keyboard only
 height = 24               # the size of a stock waybar
 
 [motion]
-speed = 1.5               # scales every animation; 1.5 matches niri's `slowdown 1.5`, 0 turns it off
+speed = auto              # scales every animation; auto follows niri's `slowdown`, 0 turns it off
 
 [keys]
 power = q                 # rebind any module: a letter, or a key name like F1
@@ -255,7 +255,7 @@ The chip shows the first line of the command's output and the panel shows all of
 A few details, for the curious:
 
 - **A layer-shell overlay.** flowbar is a GTK 4 window on the overlay layer, anchored to the top and both sides. While it's up it takes the keyboard, so a single letter can mean something.
-- **Windows that glide.** When the bar appears it reserves a strip at the top edge, and niri moves your windows out of it. niri snaps windows to a new work area without animating, so flowbar grows that strip a few pixels every frame, eased like its own drop, and the windows follow it down (and back up).
+- **Windows that make room.** When the bar appears it reserves a strip at the top edge, and niri moves your windows out of it. The strip is claimed in one step the moment you press the key, not grown with the bar: every change to it resizes every window, and apps re-flow their text a beat after the last resize, so a strip that grew frame by frame left terminals visibly settling after the bar had landed. In one step they finish re-flowing while the bar is still sliding in on niri's default spring.
 - **Your spacing, not ours.** The gap around the bar comes from niri's own `gaps`, so it lines up exactly with your window edges.
 - **One instance.** flowbar is a single-instance GTK application: running `flowbar` again just toggles the one that's already there, which is why a bind can be a plain `spawn "flowbar"`.
 - **Quiet when hidden.** Modules only poll while the bar is on screen, and slow checks (package updates) are cached.

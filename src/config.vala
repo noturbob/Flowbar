@@ -45,11 +45,6 @@ class Config {
         return v != "" ? int.parse (v) : fallback;
     }
 
-    public static double real (string group, string key, double fallback) {
-        var v = str (group, key, "");
-        return v != "" ? double.parse (v) : fallback;
-    }
-
     public static bool flag (string group, string key, bool fallback) {
         var v = str (group, key, "").down ();
         return v == "" ? fallback : v == "true" || v == "yes" || v == "1" || v == "on";
@@ -74,18 +69,26 @@ class Config {
     public static int gap () {
         var v = str ("bar", "margin", "auto");
         if (v != "auto") return int.parse (v);
-        var niri = Path.build_filename (Environment.get_user_config_dir (), "niri", "config.kdl");
-        try {
-            var re = new Regex ("^\\s*gaps\\s+([0-9.]+)", RegexCompileFlags.MULTILINE);
-            MatchInfo m;
-            if (re.match (slurp (niri), 0, out m)) return (int) double.parse (m.fetch (1));
-        } catch (RegexError e) {}
-        return 4; // niri's default
+        return (int) double.parse (niri ("gaps") ?? "4"); // niri's default
     }
 
-    // Animation durations scale with [motion] speed (1.5 matches niri's `slowdown 1.5`).
+    // Animation durations scale with [motion] speed. `auto` (the default) follows niri's
+    // `slowdown`, so the bar moves exactly as fast as your windows do.
     public static double ms (double base_ms) {
-        return base_ms * real ("motion", "speed", 1.0).clamp (0, 10);
+        var v = str ("motion", "speed", "auto");
+        if (v == "auto") v = niri ("slowdown") ?? "1";
+        return base_ms * double.parse (v).clamp (0, 10);
+    }
+
+    // A number set in niri's config.kdl, like `gaps 16` or `slowdown 1.5`; null if it isn't.
+    static string? niri (string setting) {
+        var kdl = Path.build_filename (Environment.get_user_config_dir (), "niri", "config.kdl");
+        try {
+            var re = new Regex ("^\\s*%s\\s+([0-9.]+)".printf (setting), RegexCompileFlags.MULTILINE);
+            MatchInfo m;
+            if (re.match (slurp (kdl), 0, out m)) return m.fetch (1);
+        } catch (RegexError e) {}
+        return null;
     }
 }
 

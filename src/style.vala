@@ -17,30 +17,18 @@ window { background: transparent; }
     box-shadow: 0 14px 36px alpha(black, 0.5), inset 0 1px alpha(white, 0.05);
 }
 
-/* summon: the bar drops in and unfolds from the middle out to both corners,
-   then the chips ripple outwards after it (delays are generated per chip) */
-/* sized like a waybar: chips fill its height edge to edge */
+/* sized like a waybar: chips fill its height edge to edge
+   (it slides in and out on a spring, from code: see Flowbar.slide) */
 .bar {
     min-height: calc(var(--bar-height) - 2px); /* height includes the 1px border */
     padding: 0;
     border-radius: var(--radius);
-    transition: opacity var(--t-fade) ease-out, transform var(--t-drop) cubic-bezier(0.16, 1, 0.3, 1);
-}
-.flow.hidden .bar {
-    opacity: 0;
-    transform: translateY(-22px) scale(0.35, 0.85);
-    transition: opacity var(--t-quick) ease-in, transform var(--t-leave) ease-in;
 }
 
 .chip {
     padding: 0 10px;
     border-radius: var(--radius);
-    transition: opacity var(--t-fade) ease-out, transform var(--t-chip) cubic-bezier(0.16, 1, 0.3, 1), background-color var(--t-quick) ease;
-}
-.flow.hidden .chip {
-    opacity: 0;
-    transform: translateY(-8px);
-    transition: opacity 120ms ease-in, transform 120ms ease-in, background-color 0ms;
+    transition: background-color var(--t-quick) ease;
 }
 
 .chip:hover { background: alpha(var(--accent), 0.1); }
