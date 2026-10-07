@@ -182,6 +182,8 @@ public class Flowbar : Gtk.Application {
         if (!shown) root.lift = 10000; // off the top edge until it slides in
         root.append (bar);
         root.append (drawer);
+        root.painted.connect (update_blur);
+        blurred = null; // a rebuilt bar sends its blur afresh
         win.child = root;
 
         // Clicks that land on nothing (the clear space around the bar and panel) close it.
@@ -434,6 +436,27 @@ public class Flowbar : Gtk.Application {
         });
     }
 
+    // Blur behind the bar and the open panel, rounded like them, where they're drawn this frame
+    // (the slide lifts them; the drawer clips the panel while it opens).
+    string? blurred = null;
+    void update_blur () {
+        int r = Config.num ("theme", "radius", 22);
+        Graphene.Rect screen = { { 0, 0 }, { win.get_width (), win.get_height () } };
+        Graphene.Point up = { 0, (float) (-root.lift) };
+        int[] rects = {};
+        Graphene.Rect b = {}, c = {}, d = {};
+        if (bar.compute_bounds (win, out b)) rects = rounded (b.offset_r (up.x, up.y), r, screen);
+        if ((drawer.reveal_child || drawer.child_revealed) && card.compute_bounds (win, out c)
+            && drawer.compute_bounds (win, out d)) {
+            foreach (var v in rounded (c.offset_r (up.x, up.y), r, d.offset_r (up.x, up.y))) rects += v;
+        }
+        var key = new StringBuilder ();
+        foreach (var v in rects) key.append_printf ("%d,", v);
+        if (key.str == blurred) return;
+        blurred = key.str;
+        blur_behind (win, rects);
+    }
+
     // Center the card under its chip, kept on screen. Glide there if a card is already open.
     void place_card (Module m) {
         // Measure against the bar, not the screen: the bar is shifted while it slides.
@@ -529,6 +552,7 @@ public class Flowbar : Gtk.Application {
 // of the top edge (a layer surface can't move itself).
 class Lifted : Box {
     public double lift = 0;
+    public signal void painted (); // after every frame it draws: the blur follows what's on screen
 
     public Lifted () {
         Object (orientation: Orientation.VERTICAL, spacing: 0);
@@ -538,7 +562,37 @@ class Lifted : Box {
         Graphene.Point p = { 0, (float) (-lift) };
         s.translate (p);
         base.snapshot (s);
+        painted ();
     }
+}
+
+// src/blur.c: blur behind these x, y, w, h rectangles of the window (none: no blur).
+[CCode (cname = "flowbar_blur")]
+extern void blur_behind (Widget window, int[] rects);
+
+// x, y, w, h quads covering a rounded rectangle (one-pixel rows at the corners), cut to clip.
+int[] rounded (Graphene.Rect b, int r, Graphene.Rect clip) {
+    int x = (int) Math.round (b.origin.x), y = (int) Math.round (b.origin.y);
+    int w = (int) Math.round (b.size.width), h = (int) Math.round (b.size.height);
+    r = int.min (r, int.min (w, h) / 2);
+    int[] quads = {};
+    for (int i = 0; i < r; i++) {
+        double dy = r - i - 0.5;
+        int inset = (int) Math.round (r - Math.sqrt (r * r - dy * dy));
+        foreach (var v in cut (x + inset, y + i, w - 2 * inset, 1, clip)) quads += v;
+        foreach (var v in cut (x + inset, y + h - 1 - i, w - 2 * inset, 1, clip)) quads += v;
+    }
+    foreach (var v in cut (x, y + r, w, h - 2 * r, clip)) quads += v;
+    return quads;
+}
+
+// The x, y, w, h of a rectangle's overlap with clip, or nothing.
+int[] cut (int x, int y, int w, int h, Graphene.Rect clip) {
+    int x0 = int.max (x, (int) clip.origin.x), y0 = int.max (y, (int) clip.origin.y);
+    int x1 = int.min (x + w, (int) (clip.origin.x + clip.size.width));
+    int y1 = int.min (y + h, (int) (clip.origin.y + clip.size.height));
+    if (x1 <= x0 || y1 <= y0) return {};
+    return { x0, y0, x1 - x0, y1 - y0 };
 }
 
 // One letter on the bar: a chip that's always visible and a panel that opens under it.

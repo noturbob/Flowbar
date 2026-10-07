@@ -38,7 +38,7 @@ Most bars rent a strip of your screen forever to show you the time. flowbar only
 flowbar targets Arch Linux with [niri](https://github.com/YaLTeR/niri). Any Wayland compositor with layer-shell should work, but niri is where it's at home.
 
 ```sh
-sudo pacman -S --needed vala gtk4 gtk4-layer-shell json-glib
+sudo pacman -S --needed vala gtk4 gtk4-layer-shell json-glib wayland wayland-protocols
 git clone https://github.com/noturbob/Flowbar && cd Flowbar
 make install
 ```
@@ -191,7 +191,7 @@ Six presets ship in the box. Each is one line: `preset = <name>`.
 | **nord** | <img src="docs/themes/nord.png" alt="nord theme"> |
 | **rose-pine** | <img src="docs/themes/rose-pine.png" alt="rose-pine theme"> |
 
-Any preset color can be overridden in `[theme]`: `accent`, `accent-2` (the active chip, today in the calendar), `background`, `foreground`, `good` ("on" states). Plus `opacity`, `font`, `font-size` and `radius`.
+Any preset color can be overridden in `[theme]`: `accent`, `accent-2` (the active chip, today in the calendar), `background`, `foreground`, `good` ("on" states). Plus `opacity`, `font`, `font-size` and `radius`. On compositors with the ext-background-effect protocol (niri 26.04+), what shows through the bar and its panels is blurred.
 
 ### Going further with `style.css`
 

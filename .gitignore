@@ -1,2 +1,4 @@
 flowbar
 *.c
+!src/blur.c
+src/*-protocol.h
