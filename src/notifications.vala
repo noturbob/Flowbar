@@ -8,6 +8,9 @@ class Notifications : Module {
     int64[] ids = {};
     bool[] live = {};
     string shown = ""; // what the cards show now, so an unchanged refresh doesn't rebuild them
+    // History entries you cleared: mako can't delete history, so flowbar stops showing them.
+    // ponytail: by mako's ids, kept in memory; a mako restart reuses ids, restart flowbar too then.
+    GenericSet<string> cleared = new GenericSet<string> (str_hash, str_equal);
 
     public Notifications () {
         base ("a", "");
@@ -17,7 +20,7 @@ class Notifications : Module {
         panel.append (status);
         panel.append (list);
         list.activated.connect (() => on_key ("Return")); // a clicked row acts like Enter
-        panel.append (label ("enter act (on screen) · x dismiss · X all · r bring back last · f do not disturb", "dim"));
+        panel.append (label ("enter act (on screen) · x remove · X clear all · r bring back last · f do not disturb", "dim"));
     }
 
     static async Json.Array? query (string what) {
@@ -132,12 +135,15 @@ class Notifications : Module {
             bool now = arr == on_screen;
             foreach (var node in arr.get_elements ()) {
                 var n = node.get_object ();
+                var id = n.get_int_member ("id");
+                if (!now && cleared.contains (id.to_string ())) continue;
                 cards += card (n, now);
-                found += n.get_int_member ("id");
+                found += id;
                 is_live += now;
-                seen.append_printf ("%lld%c ", found[found.length - 1], now ? 'l' : 'h');
+                seen.append_printf ("%lld%c ", id, now ? 'l' : 'h');
             }
         }
+        int count = (int) on_screen.get_length ();
         ids = found;
         live = is_live;
         if (seen.str != shown) {
@@ -145,11 +151,10 @@ class Notifications : Module {
             list.set_widgets (cards);
         }
 
-        int count = (int) on_screen.get_length ();
         value.label = count > 0 ? "%d".printf (count) : "";
         value.visible = count > 0;
         status.label = "%d on screen · %d in history%s".printf (
-            count, (int) history.get_length (), dnd ? " · do not disturb" : "");
+            count, cards.length - count, dnd ? " · do not disturb" : "");
         if (cards.length == 0) status.label = dnd ? "Nothing yet · do not disturb" : "Nothing yet";
     }
 
@@ -162,11 +167,18 @@ class Notifications : Module {
             dismiss ();
             launch ("makoctl invoke -n %lld default".printf (ids[list.pos]));
             return true;
-        case "x":
-            if (picked && live[list.pos]) act.begin ("makoctl dismiss -n %lld".printf (ids[list.pos]));
+        case "x": // remove this one: off the screen without going to history, or out of the history list
+            if (!picked) return true;
+            if (live[list.pos]) {
+                act.begin ("makoctl dismiss -h -n %lld".printf (ids[list.pos]));
+            } else {
+                cleared.add (ids[list.pos].to_string ());
+                refresh.begin ();
+            }
             return true;
-        case "X":
-            act.begin ("makoctl dismiss --all");
+        case "X": // clear everything
+            foreach (var id in ids) cleared.add (id.to_string ());
+            act.begin ("makoctl dismiss --all -h");
             return true;
         case "r":
             act.begin ("makoctl restore");
