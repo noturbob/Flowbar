@@ -611,7 +611,7 @@ void dismiss () {
     ((Flowbar) GLib.Application.get_default ()).hide_bar ();
 }
 
-// A vertical list with a keyboard cursor; the wifi and bluetooth panels use it.
+// A vertical list with a keyboard cursor; the wifi, bluetooth and notification panels use it.
 class Picker : Box {
     public int pos = 0;
     public int count = 0;
@@ -623,16 +623,25 @@ class Picker : Box {
     }
 
     public void set_rows (string[] markup) {
-        Widget? c;
-        while ((c = get_first_child ()) != null) remove (c);
-        for (int i = 0; i < markup.length; i++) {
+        Widget[] rows = {};
+        foreach (var m in markup) {
             var l = label ("", "row");
             l.use_markup = true;
-            l.label = markup[i];
-            append (l);
-            if (Config.flag ("bar", "mouse", true)) pointable (l, i);
+            l.label = m;
+            rows += l;
         }
-        count = markup.length;
+        set_widgets (rows);
+    }
+
+    // Any widgets as rows; give them the "row" class for the cursor highlight.
+    public void set_widgets (Widget[] rows) {
+        Widget? c;
+        while ((c = get_first_child ()) != null) remove (c);
+        for (int i = 0; i < rows.length; i++) {
+            append (rows[i]);
+            if (Config.flag ("bar", "mouse", true)) pointable (rows[i], i);
+        }
+        count = rows.length;
         pos = pos.clamp (0, int.max (count - 1, 0));
         paint ();
     }
@@ -647,7 +656,7 @@ class Picker : Box {
     }
 
     // Hovering a row moves the cursor to it, clicking it acts on it.
-    void pointable (Label row, int i) {
+    void pointable (Widget row, int i) {
         row.cursor = new Gdk.Cursor.from_name ("pointer", null);
         var hover = new EventControllerMotion ();
         hover.enter.connect (() => {

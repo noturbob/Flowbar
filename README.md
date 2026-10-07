@@ -119,7 +119,7 @@ Summon with <kbd>Super</kbd>+<kbd>/</kbd>. Every chip on the bar shows its key: 
 | <kbd>␣</kbd> | launcher | type to search apps · <kbd>↑</kbd>/<kbd>↓</kbd> pick · <kbd>Enter</kbd> launch |
 | <kbd>y</kbd> | clipboard | <kbd>j</kbd>/<kbd>k</kbd> pick · <kbd>Enter</kbd> copy · <kbd>x</kbd> delete · <kbd>X</kbd> clear |
 | <kbd>g</kbd> | screenshot | <kbd>a</kbd> area · <kbd>s</kbd> screen · <kbd>w</kbd> window · <kbd>o</kbd> open folder |
-| <kbd>a</kbd> | notifications | on screen, then history · <kbd>Enter</kbd> act · <kbd>x</kbd> dismiss · <kbd>X</kbd> all · <kbd>r</kbd> bring back last · <kbd>f</kbd> do not disturb |
+| <kbd>a</kbd> | notifications | cards with icon, title and body: on screen, then history (dimmed) · <kbd>Enter</kbd> act · <kbd>x</kbd> dismiss · <kbd>X</kbd> all · <kbd>r</kbd> bring back last · <kbd>f</kbd> do not disturb |
 | <kbd>n</kbd> | night | <kbd>n</kbd> night light · <kbd>f</kbd> do not disturb |
 | <kbd>u</kbd> | updates | <kbd>Enter</kbd> upgrade · <kbd>r</kbd> check now |
 | | **right** | |

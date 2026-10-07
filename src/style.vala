@@ -77,6 +77,11 @@ window { background: transparent; }
 
 .row { padding: 5px 10px; border-radius: 10px; }
 .row.cursor { background: alpha(var(--accent), 0.2); }
+.note { padding: 10px 12px; border-radius: 14px; background: alpha(var(--foreground), 0.05); }
+.note.old { opacity: 0.6; }
+.note.cursor { opacity: 1; }
+.note-title { font-weight: bold; }
+.note-body { color: alpha(var(--foreground), 0.75); }
 .status { font-size: var(--font-size); font-weight: bold; margin-bottom: 4px; }
 
 levelbar trough { background: alpha(var(--foreground), 0.08); border: none; border-radius: 99px; min-height: 8px; }
